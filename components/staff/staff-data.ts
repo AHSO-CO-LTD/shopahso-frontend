@@ -1,10 +1,4 @@
-import {
-  Boxes,
-  PackageSearch,
-  ShoppingCart,
-  Tags,
-  Users,
-} from "lucide-react";
+import { Boxes, PackageSearch, ShoppingCart, Tags, Users } from "lucide-react";
 
 export const staffNavigation = [
   {
@@ -15,7 +9,7 @@ export const staffNavigation = [
   {
     icon: Users,
     label: "Người dùng",
-    href: "/nhan-vien",
+    href: "/nhan-vien/nguoi-dung",
   },
   {
     icon: Boxes,
@@ -79,12 +73,20 @@ export const staffPanels = [
   {
     icon: PackageSearch,
     title: "Đơn hàng",
-    items: ["Xác nhận đơn mới", "Đối soát trạng thái thanh toán", "Kiểm tra bàn giao vận chuyển"],
+    items: [
+      "Xác nhận đơn mới",
+      "Đối soát trạng thái thanh toán",
+      "Kiểm tra bàn giao vận chuyển",
+    ],
   },
   {
     icon: Users,
     title: "Người dùng",
-    items: ["Rà soát tài khoản bị khóa", "Kiểm tra yêu cầu hỗ trợ", "Theo dõi lần đăng nhập gần nhất"],
+    items: [
+      "Rà soát tài khoản bị khóa",
+      "Kiểm tra yêu cầu hỗ trợ",
+      "Theo dõi lần đăng nhập gần nhất",
+    ],
   },
   {
     icon: Boxes,

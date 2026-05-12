@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronLeft, PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { adminNavigation } from "@/components/admin/admin-data";
+import { Button } from "@/components/ui/button";
 
 type AdminSidebarProps = {
   isMobileOpen: boolean;
@@ -36,15 +36,18 @@ export default function AdminSidebar({
         className={[
           "fixed inset-y-0 left-0 z-40 flex h-screen border-r border-border bg-muted/25 transition-transform duration-200 lg:static lg:h-full lg:translate-x-0",
           isMobileOpen ? "translate-x-0" : "-translate-x-full",
-          isSidebarCollapsed ? "w-[92px]" : "w-[272px]",
+          isSidebarCollapsed ? "w-[96px]" : "w-[280px]",
         ].join(" ")}
       >
         <div className="flex h-full w-full flex-col overflow-hidden">
           <div className="shrink-0 border-b border-border px-4 py-4">
             <div className="flex items-start justify-between gap-3">
               <div className={isSidebarCollapsed ? "hidden" : "min-w-0"}>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Quản trị</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  Quản trị
+                </p>
                 <h2 className="mt-2 text-lg font-black tracking-tight">ShopAHSO Admin</h2>
+                <p className="mt-1 text-xs text-muted-foreground">Giám sát tài khoản và phân quyền</p>
               </div>
 
               <div className="flex shrink-0 items-center gap-2">
@@ -55,7 +58,11 @@ export default function AdminSidebar({
                   type="button"
                   variant="outline"
                 >
-                  {isSidebarCollapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
+                  {isSidebarCollapsed ? (
+                    <PanelLeftOpen className="size-4" />
+                  ) : (
+                    <PanelLeftClose className="size-4" />
+                  )}
                 </Button>
                 <Button
                   aria-label="Đóng menu quản trị"
@@ -89,7 +96,11 @@ export default function AdminSidebar({
                   onClick={onCloseMobile}
                 >
                   <Icon className="size-4 shrink-0" />
-                  {isSidebarCollapsed ? <span className="sr-only">{item.label}</span> : <span>{item.label}</span>}
+                  {isSidebarCollapsed ? (
+                    <span className="sr-only">{item.label}</span>
+                  ) : (
+                    <span>{item.label}</span>
+                  )}
                 </Link>
               );
             })}

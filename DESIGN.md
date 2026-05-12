@@ -1,7 +1,7 @@
 # Design System
 
 ## Visual Theme
-Industrial, Precise, Geometric. A "Solid State" design language that prioritizes clarity and technical accuracy.
+Industrial, Precise, Geometric, and Minimalist. A "Solid State" design language that prioritizes clarity, technical accuracy, and the complete removal of unnecessary decorative elements.
 
 ## Color Palette (OKLCH)
 - **Primary (Trust Blue):** `oklch(0.42 0.16 250)` — Used for main navigation, primary actions, and brand identity.
@@ -28,6 +28,7 @@ Industrial, Precise, Geometric. A "Solid State" design language that prioritizes
 - **Logic:** Motion should imply mechanical precision, not organic fluidity.
 
 ## Components
+- **Interactive Elements:** Mọi button, link, thẻ (card) hoặc icon có thể click đều bắt buộc phải có trạng thái `:hover` rõ ràng và trỏ chuột phải đổi thành `cursor: pointer`.
 - **Buttons:** Solid blocks of primary/secondary colors. Sharp edges.
 - **Inputs:** High-contrast borders. Monospaced text for technical entries.
 - **Status Badges:** Solid background colors (Red/Yellow/Green) with high-contrast text. No gradients.

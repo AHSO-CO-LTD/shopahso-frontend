@@ -1,28 +1,238 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef } from "react";
 import { gsap } from "gsap";
+
+const albumCards = [
+  {
+    src: "/pic1.jpg",
+    alt: "Linh kiện và thiết bị công nghiệp AHSO số 01",
+    badge: "100% Quality",
+    badgePosition: "right",
+    badgeTone: "bg-primary text-white",
+    subtitle: "Kiểm chuẩn đầu vào",
+    code: "01",
+  },
+  {
+    src: "/pic2.webp",
+    alt: "Linh kiện và thiết bị công nghiệp AHSO số 02",
+    badge: "OEM Ready",
+    badgePosition: "left",
+    badgeTone: "bg-secondary text-secondary-foreground",
+    subtitle: "Tài liệu kỹ thuật rõ ràng",
+    code: "02",
+  },
+  {
+    src: "/pic3.jpg",
+    alt: "Linh kiện và thiết bị công nghiệp AHSO số 03",
+    badge: "Global Shipping",
+    badgePosition: "left",
+    badgeTone: "bg-accent text-white",
+    subtitle: "Luân chuyển hàng hóa quốc tế",
+    code: "03",
+  },
+  {
+    src: "/pic4.webp",
+    alt: "Linh kiện và thiết bị công nghiệp AHSO số 04",
+    badge: "Fast Response",
+    badgePosition: "right",
+    badgeTone: "bg-foreground text-background",
+    subtitle: "Phản hồi nhanh cho đội thu mua",
+    code: "04",
+  },
+] as const;
+
+const stackStates = [
+  { x: 0, y: 0, rotate: 0, scale: 1, opacity: 1, zIndex: 4 },
+  { x: 34, y: -10, rotate: 4, scale: 0.965, opacity: 0.9, zIndex: 3 },
+  { x: -30, y: -26, rotate: -5, scale: 0.93, opacity: 0.8, zIndex: 2 },
+  { x: 26, y: -42, rotate: 6, scale: 0.895, opacity: 0.68, zIndex: 1 },
+] as const;
 
 const Hero = () => {
   const textRef = useRef<HTMLDivElement>(null);
   const graphicRef = useRef<HTMLDivElement>(null);
+  const albumCardsRef = useRef<Array<HTMLDivElement | null>>([]);
 
   useEffect(() => {
-    const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    tl.fromTo(
-      textRef.current?.children || [],
-      { x: -50, opacity: 0 },
-      { x: 0, opacity: 1, duration: 1, stagger: 0.2 },
-      "+=0.2",
-    );
+    const ctx = gsap.context(() => {
+      const textChildren = textRef.current?.children ?? [];
+      const initialCards = albumCardsRef.current.filter((card): card is HTMLDivElement => Boolean(card));
 
-    tl.fromTo(
-      graphicRef.current,
-      { scale: 0.9, opacity: 0 },
-      { scale: 1, opacity: 1, duration: 1.2 },
-      "-=0.8",
-    );
+      const applyStackState = (cards: HTMLDivElement[]) => {
+        cards.forEach((card, index) => {
+          const state = stackStates[index];
+
+          if (!state) {
+            gsap.set(card, { autoAlpha: 0, zIndex: 0 });
+            return;
+          }
+
+          gsap.set(card, {
+            autoAlpha: 1,
+            x: state.x,
+            y: state.y,
+            rotation: state.rotate,
+            scale: state.scale,
+            opacity: state.opacity,
+            zIndex: state.zIndex,
+            rotateY: 0,
+            transformPerspective: 1600,
+            transformOrigin: "left center",
+          });
+        });
+      };
+
+      const introTimeline = gsap.timeline({ defaults: { ease: "expo.out" } });
+
+      introTimeline.fromTo(
+        textChildren,
+        { x: -40, opacity: 0 },
+        { x: 0, opacity: 1, duration: reducedMotion ? 0.01 : 0.85, stagger: reducedMotion ? 0 : 0.14 },
+        0,
+      );
+
+      introTimeline.fromTo(
+        graphicRef.current,
+        { scale: 0.96, opacity: 0 },
+        { scale: 1, opacity: 1, duration: reducedMotion ? 0.01 : 1 },
+        reducedMotion ? 0 : 0.12,
+      );
+
+      if (!initialCards.length) {
+        return;
+      }
+
+      applyStackState(initialCards);
+
+      if (reducedMotion || initialCards.length < 2) {
+        return;
+      }
+
+      let stopped = false;
+      let delayTween: gsap.core.Tween | null = null;
+      let idleTween: gsap.core.Tween | null = null;
+
+      const startIdleMotion = () => {
+        const frontCard = albumCardsRef.current[0];
+
+        if (!frontCard) {
+          return;
+        }
+
+        idleTween?.kill();
+        idleTween = gsap.to(frontCard, {
+          y: stackStates[0].y + 8,
+          duration: 1.4,
+          ease: "sine.inOut",
+          repeat: -1,
+          yoyo: true,
+        });
+      };
+
+      const cycleCards = () => {
+        if (stopped) {
+          return;
+        }
+
+        idleTween?.kill();
+
+        const cards = albumCardsRef.current.filter((card): card is HTMLDivElement => Boolean(card));
+        const visibleCards = cards.slice(0, stackStates.length);
+        const frontCard = visibleCards[0];
+
+        if (!frontCard || visibleCards.length < 2) {
+          return;
+        }
+
+        const timeline = gsap.timeline({
+          defaults: { ease: "expo.out" },
+          onComplete: () => {
+            albumCardsRef.current = [...cards.slice(1), frontCard];
+            applyStackState(albumCardsRef.current.filter((card): card is HTMLDivElement => Boolean(card)));
+            startIdleMotion();
+            delayTween = gsap.delayedCall(1.5, cycleCards);
+          },
+        });
+
+        timeline.set(frontCard, { zIndex: stackStates.length + 2 });
+        timeline.to(
+          frontCard,
+          {
+            rotateY: -76,
+            rotation: -8,
+            x: -18,
+            y: 110,
+            opacity: 0.22,
+            duration: 0.42,
+            ease: "power2.in",
+          },
+          0,
+        );
+
+        visibleCards.slice(1).forEach((card, index) => {
+          const nextState = stackStates[index];
+
+          timeline.to(
+            card,
+            {
+              x: nextState.x,
+              y: nextState.y,
+              rotation: nextState.rotate,
+              scale: nextState.scale,
+              opacity: nextState.opacity,
+              zIndex: nextState.zIndex,
+              duration: 0.62,
+            },
+            0.08,
+          );
+        });
+
+        const lastState = stackStates[Math.min(visibleCards.length, stackStates.length) - 1];
+
+        timeline.set(
+          frontCard,
+          {
+            x: lastState.x,
+            y: lastState.y - 46,
+            rotation: lastState.rotate - 4,
+            scale: lastState.scale,
+            opacity: 0,
+            zIndex: lastState.zIndex,
+            rotateY: 0,
+          },
+          0.38,
+        );
+
+        timeline.to(
+          frontCard,
+          {
+            x: lastState.x,
+            y: lastState.y,
+            rotation: lastState.rotate,
+            scale: lastState.scale,
+            opacity: lastState.opacity,
+            zIndex: lastState.zIndex,
+            duration: 0.5,
+          },
+          0.4,
+        );
+      };
+
+      startIdleMotion();
+      delayTween = gsap.delayedCall(1.1, cycleCards);
+
+      return () => {
+        stopped = true;
+        delayTween?.kill();
+        idleTween?.kill();
+      };
+    }, graphicRef);
+
+    return () => ctx.revert();
   }, []);
 
   return (
@@ -37,53 +247,70 @@ const Hero = () => {
             <span className="text-primary not-italic">hiệu suất</span> <br />
             <span className="text-accent">tin cậy</span>
           </h1>
-          <p className="mb-10 max-w-lg border-l-4 border-border py-2 pl-6 text-lg text-muted-foreground">
-            Hệ thống phân phối linh kiện và vật tư công nghiệp hàng đầu Việt Nam.
-            Cung cấp hơn 1.000.000 SKU từ những thương hiệu uy tín nhất thế giới.
+          <p className="mb-10 max-w-lg border border-border bg-white/70 px-6 py-4 text-lg text-muted-foreground">
+            Hệ thống phân phối linh kiện và vật tư công nghiệp với dữ liệu rõ ràng, nguồn hàng ổn định và tốc độ phản
+            hồi đủ nhanh cho đội kỹ thuật và thu mua.
           </p>
 
           <div className="flex flex-wrap gap-4">
             <button className="border-b-4 border-black/20 bg-primary px-10 py-4 font-semibold text-white transition-all hover:brightness-110 active:translate-y-1">
               Khám phá catalog
             </button>
-            <button className="border-2 border-border bg-white px-10 py-4 font-semibold text-foreground transition-all hover:bg-muted">
+            <button className="border border-border bg-white px-10 py-4 font-semibold text-foreground transition-colors hover:bg-muted">
               Tra cứu SKU
             </button>
           </div>
         </div>
 
-        <div ref={graphicRef} className="relative flex-1 aspect-square w-full max-w-lg">
-          <div className="absolute inset-0 translate-x-4 translate-y-4 rotate-3 border-2 border-primary/20" />
-          <div className="absolute inset-0 -translate-x-4 -translate-y-4 -rotate-3 border-2 border-secondary/20" />
+        <div ref={graphicRef} className="relative aspect-square w-full max-w-xl flex-1 overflow-visible [perspective:1600px]">
+          <div className="absolute inset-[4%] translate-x-5 translate-y-5 rotate-[4deg] border border-primary/20" />
+          <div className="absolute inset-[4%] -translate-x-5 -translate-y-3 -rotate-[3deg] border border-secondary/25" />
 
-          <div className="relative flex h-full w-full items-center justify-center overflow-hidden border border-border bg-muted">
-            <div className="industrial-grid absolute inset-0 rotate-12 scale-150 opacity-10" />
+          <div className="absolute inset-0 flex items-center justify-center [transform-style:preserve-3d]">
+            {albumCards.map((card, index) => (
+              <div
+                key={card.src}
+                ref={(node) => {
+                  albumCardsRef.current[index] = node;
+                }}
+                className="absolute inset-x-[10%] inset-y-[7%] overflow-hidden border border-border bg-muted [backface-visibility:hidden] [transform-style:preserve-3d]"
+              >
+                <Image
+                  src={card.src}
+                  alt={card.alt}
+                  fill
+                  priority={index === 0}
+                  sizes="(max-width: 1024px) 90vw, 44vw"
+                  className="object-cover object-center"
+                />
+                <div className="absolute inset-0 bg-background/14" />
+                <div className="industrial-grid absolute inset-0 opacity-[0.07]" />
 
-            <svg
-              width="300"
-              height="300"
-              viewBox="0 0 100 100"
-              className="absolute top-0 right-0 translate-x-1/4 -translate-y-1/4 text-primary/10"
-            >
-              <rect x="10" y="10" width="80" height="80" stroke="currentColor" strokeWidth="0.5" fill="none" />
-              <circle cx="50" cy="50" r="30" stroke="currentColor" strokeWidth="0.5" fill="none" />
-              <line x1="10" y1="10" x2="90" y2="90" stroke="currentColor" strokeWidth="0.5" />
-              <line x1="90" y1="10" x2="10" y2="90" stroke="currentColor" strokeWidth="0.5" />
-            </svg>
+                <div className="relative flex h-full flex-col justify-between p-5 lg:p-7">
+                  <div className="flex">
+                    <div
+                      className={[
+                        "px-4 py-3 text-sm font-semibold",
+                        card.badgeTone,
+                        card.badgePosition === "left" ? "mr-auto" : "ml-auto",
+                      ].join(" ")}
+                    >
+                      {card.badge}
+                    </div>
+                  </div>
 
-            <div className="z-10 flex flex-col items-center p-12">
-              <div className="select-none text-[120px] leading-none text-border">AHSO</div>
-              <div className="mt-[-40px] font-mono text-xl font-bold tracking-[0.5em] text-primary">
-                INDUSTRIAL
+                  <div className="flex flex-col items-start gap-3 self-start border border-background/60 bg-background/86 px-5 py-4 text-foreground">
+                    <div className="text-4xl font-black tracking-tight lg:text-5xl">AHSO</div>
+                    <div className="text-sm font-bold tracking-[0.32em] text-primary">INDUSTRIAL</div>
+                  </div>
+
+                  <div className="flex items-end justify-between gap-4 border-t border-background/60 pt-4 text-sm text-background">
+                    <span className="max-w-[70%] font-medium">{card.subtitle}</span>
+                    <span className="font-mono text-xs tracking-[0.24em] text-background/85">{card.code}</span>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-
-          <div className="absolute top-10 -right-4 bg-primary p-4 text-sm font-semibold text-white">
-            100% Quality
-          </div>
-          <div className="absolute bottom-10 -left-4 bg-accent p-4 text-sm font-semibold text-white">
-            Global Shipping
+            ))}
           </div>
         </div>
       </div>
