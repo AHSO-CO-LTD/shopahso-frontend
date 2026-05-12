@@ -15,6 +15,14 @@ import {
   staffSignals,
 } from "@/components/staff/staff-data";
 
+function EmptyBlock({ title }: { title: string }) {
+  return (
+    <div className="border border-border bg-background px-6 py-10 text-sm text-muted-foreground">
+      {title}
+    </div>
+  );
+}
+
 export default function StaffWorkspace() {
   const revealRef = useDashboardReveal();
 
@@ -22,33 +30,49 @@ export default function StaffWorkspace() {
     <StaffLayout>
       <div ref={revealRef} className="flex-1 px-4 py-6 lg:px-8 lg:py-8">
         <div data-dashboard-block>
-          <DashboardSignalStrip signals={staffSignals} />
+          {staffSignals.length > 0 ? (
+            <DashboardSignalStrip signals={staffSignals} />
+          ) : (
+            <EmptyBlock title="Khung tin hieu staff (cho du lieu tu API)." />
+          )}
         </div>
 
         <div className="mt-8 space-y-8">
           <div data-dashboard-block>
-            <DashboardMetricGrid metrics={staffOverviewCards} />
+            {staffOverviewCards.length > 0 ? (
+              <DashboardMetricGrid metrics={staffOverviewCards} />
+            ) : (
+              <EmptyBlock title="Khung metric staff (khong con du lieu hardcode)." />
+            )}
           </div>
 
           <section className="grid gap-8 xl:grid-cols-[minmax(0,1.15fr)_320px]">
             <div data-dashboard-block>
-              <DashboardWorkstreamList
-                items={staffModules}
-                overline="Nghiệp vụ chính"
-                title="Khu xử lý cho nhân viên"
-              />
+              {staffModules.length > 0 ? (
+                <DashboardWorkstreamList
+                  items={staffModules}
+                  overline="Nghiep vu chinh"
+                  title="Khu xu ly cho nhan vien"
+                />
+              ) : (
+                <EmptyBlock title="Khung workstream staff (cho du lieu tu API)." />
+              )}
             </div>
             <div data-dashboard-block>
-              <DashboardQueueList
-                items={staffQueues}
-                overline="Hàng đợi"
-                title="Cần ưu tiên"
-              />
+              {staffQueues.length > 0 ? (
+                <DashboardQueueList items={staffQueues} overline="Hang doi" title="Can uu tien" />
+              ) : (
+                <EmptyBlock title="Khung queue staff (cho du lieu tu API)." />
+              )}
             </div>
           </section>
 
           <div data-dashboard-block>
-            <DashboardActionPanelGrid panels={staffPanels} />
+            {staffPanels.length > 0 ? (
+              <DashboardActionPanelGrid panels={staffPanels} />
+            ) : (
+              <EmptyBlock title="Khung action panel staff (cho du lieu tu API)." />
+            )}
           </div>
         </div>
       </div>

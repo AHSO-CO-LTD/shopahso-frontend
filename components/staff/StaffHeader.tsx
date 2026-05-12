@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -7,7 +7,11 @@ import { Button } from "@/components/ui/button";
 
 const pageLabels: Record<string, string> = {
   "/nhan-vien": "Bảng điều phối nghiệp vụ",
+  "/nhan-vien/san-pham": "Quản lý sản phẩm",
+  "/nhan-vien/san-pham/tao": "Tạo sản phẩm",
   "/nhan-vien/nguoi-dung": "Quản lý người dùng",
+  "/nhan-vien/danh-muc": "Tạo danh mục",
+  "/nhan-vien/thuong-hieu": "Quản lý thương hiệu",
 };
 
 type StaffHeaderProps = {
@@ -16,7 +20,15 @@ type StaffHeaderProps = {
 
 export default function StaffHeader({ onOpenSidebar }: StaffHeaderProps) {
   const pathname = usePathname();
-  const currentLabel = pageLabels[pathname] ?? "Khu nhân viên";
+  const currentLabel = pathname.startsWith("/nhan-vien/san-pham/") && pathname.includes("/bien-the")
+    ? pathname.endsWith("/tao")
+      ? "Tạo biến thể sản phẩm"
+      : pathname.endsWith("/sua")
+        ? "Sửa biến thể sản phẩm"
+      : "Quản lý biến thể sản phẩm"
+    : pathname.startsWith("/nhan-vien/san-pham/")
+      ? "Quản lý chi tiết sản phẩm"
+    : pageLabels[pathname] ?? "Khu nhân viên";
 
   return (
     <header className="shrink-0 border-b border-border bg-background px-4 py-4 lg:px-8">
