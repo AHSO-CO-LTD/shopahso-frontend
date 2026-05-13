@@ -1,0 +1,104 @@
+export type CatalogVariantCategory = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
+export type CatalogVariantBrand = {
+  id: string;
+  name: string;
+  slug: string;
+  logoUrl: string | null;
+};
+
+export type CatalogVariantProduct = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
+export type CatalogVariantAttributeValue = {
+  id?: string;
+  code: string;
+  dataType?: "TEXT" | "NUMBER" | "BOOLEAN" | "ENUM";
+  valueText?: string | null;
+  valueNumber?: number | null;
+  valueBoolean?: boolean | null;
+  valueEnum?: string | null;
+  definition?: {
+    id?: string;
+    name?: string;
+    unit?: string | null;
+    code?: string;
+  };
+};
+
+export type CatalogVariant = {
+  id: string;
+  slug: string;
+  sku: string;
+  name: string;
+  effectiveImageUrls: string[];
+  price: number;
+  costPrice?: number | string | null;
+  salePrice?: number | string | null;
+  discountPercent?: number | string | null;
+  taxPercent?: number | string | null;
+  stockQuantity: number;
+  unit: string | null;
+  minOrderQuantity: number;
+  score: number;
+  active: boolean;
+  specSnapshot?: Record<string, unknown> | null;
+  attributeValues?: CatalogVariantAttributeValue[];
+  category: CatalogVariantCategory;
+  brand: CatalogVariantBrand | null;
+  product: CatalogVariantProduct;
+};
+
+export type CatalogVariantSearchResponse = {
+  items: CatalogVariant[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
+
+export type CatalogFeaturedProduct = {
+  id: string;
+  name: string;
+  slug: string;
+  createdAt: string;
+  imageUrls: string[];
+  effectiveImageUrls: string[];
+  featuredScore?: string | number;
+  category?: {
+    id: string;
+    name: string;
+    slug: string;
+  } | null;
+  brand?: {
+    id: string;
+    name: string;
+    slug: string;
+    logoUrl: string | null;
+  } | null;
+  variants: Array<{
+    id: string;
+    sku: string;
+    name: string;
+    slug: string;
+    imageUrls: string[];
+    effectiveImageUrls?: string[];
+  }>;
+};
+
+export type CatalogFeaturedBrand = {
+  id: string;
+  name: string;
+  slug: string;
+  logoUrl: string | null;
+  active: boolean;
+  featuredOrderCount: number;
+  featuredVariantCount: number;
+};

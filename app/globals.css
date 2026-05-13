@@ -98,6 +98,34 @@
   }
 }
 
+@layer utilities {
+  :where(button, [role="button"], a[href], summary, [data-clickable="true"]) {
+    cursor: pointer;
+  }
+
+  :where(button, [role="button"], a[href], summary, [data-clickable="true"]):not([disabled]):not(
+      [aria-disabled="true"]
+    ) {
+    transition:
+      color 160ms ease-out,
+      background-color 160ms ease-out,
+      border-color 160ms ease-out,
+      opacity 160ms ease-out,
+      filter 160ms ease-out;
+  }
+
+  :where(button, [role="button"], a[href], summary, [data-clickable="true"]):not([disabled]):not(
+      [aria-disabled="true"]
+    ):hover {
+    filter: brightness(0.97);
+  }
+
+  :where(button, [role="button"], a[href], summary, [data-clickable="true"])[disabled],
+  :where(button, [role="button"], a[href], summary, [data-clickable="true"])[aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+}
+
 .industrial-grid {
   background-image: radial-gradient(var(--border) 1px, transparent 1px);
   background-size: 24px 24px;

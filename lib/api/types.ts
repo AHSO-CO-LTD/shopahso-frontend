@@ -5,7 +5,7 @@ export type ApiQueryParams = Record<
   ApiPrimitive | null | undefined
 >;
 
-export type ApiResponseType = "json" | "text" | "none";
+export type ApiResponseType = "json" | "text" | "blob" | "none";
 
 export type ApiRequestOptions = Omit<RequestInit, "body"> & {
   body?: BodyInit | Record<string, unknown> | null;

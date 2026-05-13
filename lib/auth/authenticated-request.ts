@@ -3,10 +3,38 @@ import type { ApiRequestOptions } from "@/lib/api/types";
 import { refreshAuthSession } from "@/lib/api/services/auth.service";
 import { clearStoredAuthTokens, getStoredAuthTokens, setStoredAuthTokens } from "@/lib/auth/storage";
 
+let refreshTokensPromise: Promise<{ accessToken: string; refreshToken: string }> | null = null;
+
 function withAccessToken(headers: HeadersInit | undefined, accessToken: string) {
   const nextHeaders = new Headers(headers);
   nextHeaders.set("Authorization", `Bearer ${accessToken}`);
   return nextHeaders;
+}
+
+async function refreshTokensOnce() {
+  if (!refreshTokensPromise) {
+    const currentTokens = getStoredAuthTokens();
+
+    if (!currentTokens) {
+      throw new ApiError("Phiên đăng nhập không hợp lệ", 401, "/auth/refresh");
+    }
+
+    refreshTokensPromise = refreshAuthSession(currentTokens)
+      .then((session) => {
+        const refreshedTokens = {
+          accessToken: session.accessToken,
+          refreshToken: session.refreshToken,
+        };
+
+        setStoredAuthTokens(refreshedTokens);
+        return refreshedTokens;
+      })
+      .finally(() => {
+        refreshTokensPromise = null;
+      });
+  }
+
+  return refreshTokensPromise;
 }
 
 export async function authenticatedApiRequest<T>(path: string, options: ApiRequestOptions = {}) {
@@ -27,13 +55,7 @@ export async function authenticatedApiRequest<T>(path: string, options: ApiReque
     }
 
     try {
-      const refreshedSession = await refreshAuthSession(storedTokens);
-      const refreshedTokens = {
-        accessToken: refreshedSession.accessToken,
-        refreshToken: refreshedSession.refreshToken,
-      };
-
-      setStoredAuthTokens(refreshedTokens);
+      const refreshedTokens = await refreshTokensOnce();
 
       return await apiRequest<T>(path, {
         ...options,

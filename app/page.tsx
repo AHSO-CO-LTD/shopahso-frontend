@@ -1,101 +1,72 @@
-import BackendStatus from "@/components/home/BackendStatus";
 import Hero from "@/components/home/Hero";
+import ValueProps from "@/components/home/ValueProps";
+import FeaturedProducts from "@/components/home/FeaturedProducts";
+import FeaturedBrands from "@/components/home/FeaturedBrands";
+import NewArrivals from "@/components/home/NewArrivals";
+
+export const metadata = {
+  title: "ShopAHSO — Linh kiện & Vật tư Công nghiệp",
+  description:
+    "Nền tảng tra cứu và đặt hàng linh kiện công nghiệp: PLC, cảm biến, thiết bị đóng cắt, robot, băng chuyền. Hỗ trợ B2B và B2C với thông tin kỹ thuật minh bạch.",
+};
 
 export default function Home() {
-  const categories = [
-    { name: "Thiết bị đóng cắt", code: "SW-01" },
-    { name: "Cảm biến công nghiệp", code: "SN-02" },
-    { name: "PLC & Tự động hóa", code: "LC-03" },
-    { name: "Cáp & Đầu nối", code: "CB-04" },
-  ];
-
   return (
     <>
+      {/* 1. Hero — 3D Industrial Scene + CTA */}
       <Hero />
-      <BackendStatus />
 
-      <section className="border-t border-border bg-white py-24">
-        <div className="container mx-auto px-4">
-          <div className="mb-16 flex items-end justify-between">
-            <div className="space-y-4">
-              <h2 className="text-4xl font-black italic tracking-tight">
-                Danh mục <span className="text-primary not-italic">nổi bật</span>
-              </h2>
-              <div className="h-2 w-32 bg-primary" />
-            </div>
-            <button className="border-b-2 border-primary pb-1 text-sm font-semibold transition-colors hover:text-primary">
-              Xem tất cả danh mục
-            </button>
-          </div>
+      {/* 2. Value Props — 4 USP columns */}
+      <ValueProps />
 
-          <div className="grid grid-cols-1 gap-0 border border-border md:grid-cols-2 lg:grid-cols-4">
-            {categories.map((cat) => (
-              <div
-                key={cat.code}
-                className="group relative overflow-hidden border border-border bg-white p-8 transition-all duration-300 hover:bg-muted"
-              >
-                <div className="absolute top-0 left-0 h-1 w-full bg-border transition-colors group-hover:bg-primary" />
-
-                <div className="mb-6 font-mono text-[10px] tracking-[0.3em] text-muted-foreground">
-                  {cat.code} / 2026
-                </div>
-                <h3 className="mb-12 text-xl font-black transition-colors group-hover:text-primary">
-                  {cat.name}
-                </h3>
-
-                <div className="flex items-center justify-between">
-                  <div className="h-1 w-12 bg-border transition-all duration-500 group-hover:w-20 group-hover:bg-primary" />
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    className="opacity-0 transition-opacity group-hover:opacity-100"
-                  >
-                    <line x1="5" y1="12" x2="19" y2="12" />
-                    <polyline points="12 5 19 12 12 19" />
-                  </svg>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="overflow-hidden border-y border-border bg-muted py-12">
+      {/* 3. Marquee — brand keywords */}
+      <section className="overflow-hidden border-y border-border bg-muted py-10">
         <div className="flex animate-infinite-scroll whitespace-nowrap">
-          <div className="flex select-none items-center gap-20 px-10 text-2xl font-black italic tracking-[0.08em] text-border">
+          <div className="flex select-none items-center gap-20 px-10 text-xl font-black italic tracking-[0.1em] text-border">
             <span>Precision</span> • <span>Performance</span> • <span>Reliability</span> •{" "}
-            <span>Innovation</span> • <span>AHSO Industrial</span> • <span>Quality First</span> •{" "}
-            <span>Safety standards</span> •
+            <span>Automation</span> • <span>AHSO Industrial</span> • <span>Quality First</span> •{" "}
+            <span>Safety Standards</span> • <span>Fast Delivery</span> •
           </div>
-          <div className="flex select-none items-center gap-20 px-10 text-2xl font-black italic tracking-[0.08em] text-border">
+          <div className="flex select-none items-center gap-20 px-10 text-xl font-black italic tracking-[0.1em] text-border">
             <span>Precision</span> • <span>Performance</span> • <span>Reliability</span> •{" "}
-            <span>Innovation</span> • <span>AHSO Industrial</span> • <span>Quality First</span> •{" "}
-            <span>Safety standards</span> •
+            <span>Automation</span> • <span>AHSO Industrial</span> • <span>Quality First</span> •{" "}
+            <span>Safety Standards</span> • <span>Fast Delivery</span> •
           </div>
         </div>
       </section>
 
-      <section className="bg-primary py-24 text-white">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="mb-8 text-3xl font-black tracking-tight lg:text-5xl">
-            Bạn đang tìm kiếm mã hàng cụ thể?
+      {/* 4. Featured Products */}
+      <FeaturedProducts />
+
+      {/* 5. Featured Brands */}
+      <FeaturedBrands />
+
+      {/* 6. New Arrivals */}
+      <NewArrivals />
+
+      {/* 7. SKU Search CTA */}
+      <section className="border-t border-border bg-primary py-24 text-white">
+        <div className="container mx-auto px-4">
+          <div className="mb-3 font-mono text-[10px] tracking-[0.25em] text-white/60 uppercase">
+            QUICK LOOKUP / SKU SEARCH
+          </div>
+          <h2 className="mb-4 text-3xl font-black tracking-tight lg:text-5xl">
+            Đang tìm mã hàng cụ thể?
           </h2>
-          <p className="mx-auto mb-12 max-w-2xl font-medium text-primary-foreground/80">
-            Sử dụng công cụ tra cứu thông minh của chúng tôi để tìm nhanh Datasheet, giá và tình
-            trạng tồn kho của hơn 1 triệu sản phẩm.
+          <p className="mb-10 max-w-xl font-medium text-white/75 leading-relaxed">
+            Nhập Part Number hoặc SKU để tra Datasheet, giá và tình trạng tồn kho của hơn 1 triệu sản phẩm.
           </p>
-          <div className="mx-auto flex max-w-2xl">
+          <div className="flex max-w-2xl">
             <input
               type="text"
               placeholder="Nhập mã SKU, Part Number..."
-              className="h-16 flex-1 bg-white px-6 text-foreground focus:outline-none"
+              className="h-14 flex-1 bg-white px-6 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-white/50"
             />
-            <button className="h-16 bg-foreground px-10 font-semibold text-white transition-colors hover:bg-black">
-              Tra cứu
+            <button
+              type="button"
+              className="h-14 cursor-pointer bg-foreground px-10 font-semibold text-white transition-colors hover:bg-black"
+            >
+              Tra cứu →
             </button>
           </div>
         </div>

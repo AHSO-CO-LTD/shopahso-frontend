@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { AuthField } from "@/components/auth/AuthField";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -49,6 +50,7 @@ export function LoginForm() {
   });
   const [errors, setErrors] = useState<Partial<Record<keyof LoginFormState, string>>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
   const updateField = (field: keyof LoginFormState, value: string) => {
     setValues((currentValues) => ({
@@ -114,16 +116,32 @@ export function LoginForm() {
           value={values.email}
           onChange={(value) => updateField("email", value)}
         />
-        <AuthField
-          autoComplete="current-password"
-          error={errors.password}
-          label="Mật khẩu"
-          name="password"
-          placeholder="Nhập mật khẩu"
-          type="password"
-          value={values.password}
-          onChange={(value) => updateField("password", value)}
-        />
+        <div className="space-y-2">
+          <label htmlFor="auth-field-password" className="text-sm font-semibold text-foreground">
+            Mật khẩu
+          </label>
+          <div className="relative">
+            <input
+              id="auth-field-password"
+              autoComplete="current-password"
+              className="h-12 w-full border border-border bg-white px-4 pr-11 text-sm outline-none transition-colors focus:border-primary"
+              name="password"
+              onChange={(event) => updateField("password", event.target.value)}
+              placeholder="Nhập mật khẩu"
+              type={isPasswordVisible ? "text" : "password"}
+              value={values.password}
+            />
+            <button
+              aria-label={isPasswordVisible ? "Ẩn mật khẩu" : "Hiển thị mật khẩu"}
+              className="absolute inset-y-0 right-0 flex w-11 cursor-pointer items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+              onClick={() => setIsPasswordVisible((current) => !current)}
+              type="button"
+            >
+              {isPasswordVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            </button>
+          </div>
+          {errors.password ? <p className="text-sm text-destructive">{errors.password}</p> : null}
+        </div>
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
