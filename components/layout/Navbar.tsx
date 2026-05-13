@@ -7,15 +7,23 @@ import { useRouter } from "next/navigation";
 import { gsap } from "gsap";
 import { toast } from "sonner";
 import { ChevronDown, LayoutDashboard, LogOut, Users } from "lucide-react";
+import { searchCatalogVariants } from "@/lib/api/services/catalog-variants.service";
+import type { CatalogVariant } from "@/lib/catalog/types";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { Button } from "@/components/ui/button";
 
 const Navbar = () => {
   const navRef = useRef<HTMLElement>(null);
   const accountMenuRef = useRef<HTMLDivElement>(null);
+  const searchBoxRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { isAuthenticated, isInitializing, logout, profile } = useAuth();
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  const [searchKeyword, setSearchKeyword] = useState("");
+  const [searchResults, setSearchResults] = useState<CatalogVariant[]>([]);
+  const [isSearchLoading, setIsSearchLoading] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchTotal, setSearchTotal] = useState(0);
 
   useEffect(() => {
     gsap.fromTo(
@@ -30,11 +38,15 @@ const Navbar = () => {
       if (!accountMenuRef.current?.contains(event.target as Node)) {
         setIsAccountMenuOpen(false);
       }
+      if (!searchBoxRef.current?.contains(event.target as Node)) {
+        setIsSearchOpen(false);
+      }
     }
 
     function handleEscape(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setIsAccountMenuOpen(false);
+        setIsSearchOpen(false);
       }
     }
 
@@ -46,6 +58,37 @@ const Navbar = () => {
       document.removeEventListener("keydown", handleEscape);
     };
   }, []);
+
+  useEffect(() => {
+    const keyword = searchKeyword.trim();
+
+    if (!keyword) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(async () => {
+      setIsSearchLoading(true);
+      try {
+        const response = await searchCatalogVariants({
+          q: keyword,
+          sort: "relevance",
+          page: 1,
+          limit: 8,
+        });
+        setSearchResults(response.items);
+        setSearchTotal(response.total);
+        setIsSearchOpen(true);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Không thể tìm kiếm sản phẩm.");
+      } finally {
+        setIsSearchLoading(false);
+      }
+    }, 300);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [searchKeyword]);
 
   const handleLogout = async () => {
     const loadingToastId = toast.loading("Đang đăng xuất...");
@@ -90,10 +133,10 @@ const Navbar = () => {
         </Link>
 
         <nav className="hidden items-center gap-8 text-sm font-semibold lg:flex">
-          <Link href="/catalog" className="transition-colors hover:text-primary">
-            Danh mục
+          <Link href="/san-pham" className="transition-colors hover:text-primary">
+            Sản phẩm
           </Link>
-          <Link href="/brands" className="transition-colors hover:text-primary">
+          <Link href="/thuong-hieu" className="transition-colors hover:text-primary">
             Thương hiệu
           </Link>
           <Link href="/datasheet" className="transition-colors hover:text-primary">
@@ -104,12 +147,27 @@ const Navbar = () => {
           </Link>
         </nav>
 
-        <div className="relative hidden max-w-xl flex-1 md:block">
+        <div ref={searchBoxRef} className="relative hidden max-w-xl flex-1 md:block">
           <div className="relative flex items-center">
             <input
               type="text"
               placeholder="Tìm mã SKU, thông số kỹ thuật..."
               className="h-10 w-full border border-border bg-muted px-10 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+              onChange={(event) => {
+                const value = event.target.value;
+                setSearchKeyword(value);
+                if (!value.trim()) {
+                  setSearchResults([]);
+                  setSearchTotal(0);
+                  setIsSearchOpen(false);
+                }
+              }}
+              onFocus={() => {
+                if (searchKeyword.trim()) {
+                  setIsSearchOpen(true);
+                }
+              }}
+              value={searchKeyword}
             />
             <div className="pointer-events-none absolute left-3 flex items-center">
               <svg
@@ -131,6 +189,37 @@ const Navbar = () => {
               <span>K</span>
             </div>
           </div>
+          {isSearchOpen ? (
+            <div className="absolute top-[calc(100%+8px)] left-0 right-0 z-50 border border-border bg-background">
+              {isSearchLoading ? (
+                <p className="px-4 py-3 text-sm text-muted-foreground">Đang tìm kiếm...</p>
+              ) : searchResults.length === 0 ? (
+                <p className="px-4 py-3 text-sm text-muted-foreground">Không tìm thấy kết quả phù hợp.</p>
+              ) : (
+                <>
+                  <ul className="divide-y divide-border">
+                    {searchResults.map((item) => (
+                      <li key={item.id}>
+                        <Link
+                          href={`/san-pham/${item.slug}`}
+                          className="block px-4 py-3 transition-colors hover:bg-muted/40"
+                          onClick={() => setIsSearchOpen(false)}
+                        >
+                          <p className="truncate text-sm font-semibold">{item.name}</p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            SKU: {item.sku} • {item.product.name}
+                          </p>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="border-t border-border px-4 py-2 text-xs text-muted-foreground">
+                    Tổng kết quả: {searchTotal}
+                  </div>
+                </>
+              )}
+            </div>
+          ) : null}
         </div>
 
         <div className="flex items-center gap-4">

@@ -1,6 +1,10 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
-export default function WebShellLoading() {
+type WebShellLoadingProps = {
+  label?: string;
+};
+
+export default function WebShellLoading({ label = "Đang tải dữ liệu..." }: WebShellLoadingProps) {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <header className="sticky top-0 z-50 border-b border-border bg-background/95">
@@ -21,6 +25,7 @@ export default function WebShellLoading() {
         <section className="industrial-grid py-16 lg:py-28">
           <div className="container mx-auto grid gap-10 px-4 lg:grid-cols-[1fr_minmax(0,680px)] lg:items-center">
             <div className="space-y-5">
+              <p className="text-sm font-semibold uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
               <Skeleton className="h-6 w-56" />
               <Skeleton className="h-16 w-full max-w-xl" />
               <Skeleton className="h-16 w-full max-w-lg" />

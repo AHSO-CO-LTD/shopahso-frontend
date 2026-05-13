@@ -38,6 +38,7 @@ function toProductFormValue(product: ProductSummary): ProductFormValue {
     slug: product.slug,
     description: product.description ?? "",
     datasheetUrl: product.datasheetUrl ?? "",
+    status: product.status ?? "DRAFT",
     active: product.active,
   };
 }
@@ -49,6 +50,10 @@ function toVariantFormValue(variant: VariantSummary): VariantFormValue {
     name: variant.name,
     slug: variant.slug,
     price: String(variant.price),
+    costPrice: variant.costPrice == null ? "" : String(variant.costPrice),
+    salePrice: variant.salePrice == null ? "" : String(variant.salePrice),
+    discountPercent: variant.discountPercent == null ? "" : String(variant.discountPercent),
+    taxPercent: variant.taxPercent == null ? "" : String(variant.taxPercent),
     stockQuantity: String(variant.stockQuantity),
     unit: variant.unit ?? "",
     minOrderQuantity: String(variant.minOrderQuantity),
@@ -329,7 +334,10 @@ export default function StaffProductManager() {
                         <p className="truncate text-xs text-muted-foreground">slug: {product.slug}</p>
                         <p className="truncate text-xs text-muted-foreground">variants: {product._count.variants}</p>
                       </div>
-                      <span className="text-right text-xs font-semibold">{product.active ? "ON" : "OFF"}</span>
+                      <div className="text-right text-xs font-semibold">
+                        <p>{product.status}</p>
+                        <p className="mt-1 text-[10px] text-muted-foreground">{product.active ? "ON" : "OFF"}</p>
+                      </div>
                     </button>
                   ))}
                 </div>
@@ -351,7 +359,9 @@ export default function StaffProductManager() {
                           <div className="min-w-0">
                             <p className="truncate font-semibold">{variant.name}</p>
                             <p className="truncate text-xs text-muted-foreground">SKU: {variant.sku}</p>
-                            <p className="truncate text-xs text-muted-foreground">Giá: {variant.price}</p>
+                            <p className="truncate text-xs text-muted-foreground">
+                              Giá bán: {variant.price} | Giá sau giảm: {variant.salePrice ?? "N/A"}
+                            </p>
                           </div>
                           <span className="text-right text-xs font-semibold">{variant.active ? "ON" : "OFF"}</span>
                         </button>

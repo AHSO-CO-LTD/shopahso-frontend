@@ -1,23 +1,32 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { listCatalogFeaturedBrands } from "@/lib/api/services/catalog-variants.service";
+import type { CatalogFeaturedBrand } from "@/lib/catalog/types";
 
 gsap.registerPlugin(ScrollTrigger);
-
-// ─── 9 skeleton slots — sẽ được thay bằng API data khi admin upload logo ───
-
-const BRAND_SLOTS = Array.from({ length: 9 }, (_, i) => ({
-  id: `brand-skeleton-${i}`,
-  index: i + 1,
-}));
-
-// ─── Featured Brands Section ─────────────────────────────────────────────────
 
 const FeaturedBrands = () => {
   const rootRef = useRef<HTMLElement>(null);
   const rowRef = useRef<HTMLDivElement>(null);
+  const [brands, setBrands] = useState<CatalogFeaturedBrand[]>([]);
+
+  useEffect(() => {
+    async function loadFeaturedBrands() {
+      try {
+        const response = await listCatalogFeaturedBrands();
+        setBrands(response.slice(0, 10));
+      } catch {
+        setBrands([]);
+      }
+    }
+
+    void loadFeaturedBrands();
+  }, []);
 
   useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -41,12 +50,11 @@ const FeaturedBrands = () => {
         },
       },
     );
-  }, []);
+  }, [brands.length]);
 
   return (
     <section ref={rootRef} className="border-t border-border bg-muted py-16">
       <div className="container mx-auto px-4">
-        {/* Header */}
         <div className="mb-10 flex items-end justify-between">
           <div>
             <div className="mb-2 font-mono text-[10px] tracking-[0.25em] text-muted-foreground uppercase">
@@ -62,43 +70,49 @@ const FeaturedBrands = () => {
           </p>
         </div>
 
-        {/* Brand grid: 9 skeleton slots */}
-        <div
-          ref={rowRef}
-          className="grid grid-cols-3 gap-0 border border-border sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-9"
-        >
-          {BRAND_SLOTS.map((slot) => (
-            <div
-              key={slot.id}
-              className="group flex aspect-square cursor-pointer flex-col items-center justify-center gap-2 border-r border-b border-border bg-white p-4 transition-colors hover:bg-primary last:border-r-0"
-              title="Thương hiệu đang được cập nhật"
-            >
-              {/* Placeholder icon */}
-              <svg
-                width="32"
-                height="32"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                className="text-border transition-colors group-hover:text-white"
+        {brands.length === 0 ? (
+          <div className="border border-border bg-white px-4 py-8 text-center text-sm text-muted-foreground">
+            Chưa có thương hiệu nổi bật.
+          </div>
+        ) : (
+          <div
+            ref={rowRef}
+            className="grid grid-cols-2 gap-0 border border-border sm:grid-cols-3 lg:grid-cols-5"
+          >
+            {brands.map((brand) => (
+              <Link
+                key={brand.id}
+                href={`/thuong-hieu/${brand.slug}`}
+                className="group flex aspect-square cursor-pointer flex-col items-center justify-center gap-3 border-r border-b border-border bg-white p-4 transition-colors hover:bg-primary last:border-r-0"
+                title={brand.name}
               >
-                <rect x="2" y="7" width="20" height="14" rx="0" />
-                <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
-                <line x1="12" y1="12" x2="12" y2="16" />
-              </svg>
-              {/* Slot number */}
-              <span className="font-mono text-[8px] tracking-[0.2em] text-muted-foreground transition-colors group-hover:text-white/70">
-                {String(slot.index).padStart(2, "0")}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        {/* Note */}
-        <p className="mt-4 font-mono text-[10px] tracking-wider text-muted-foreground">
-          * Admin có thể cập nhật logo thương hiệu từ trang quản trị.
-        </p>
+                <div className="relative h-12 w-28">
+                  {brand.logoUrl ? (
+                    <Image
+                      src={brand.logoUrl}
+                      alt={brand.name}
+                      fill
+                      className="object-contain"
+                      sizes="112px"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center border border-border font-mono text-[10px] tracking-wider text-muted-foreground transition-colors group-hover:border-white/50 group-hover:text-white/70">
+                      NO LOGO
+                    </div>
+                  )}
+                </div>
+                <div className="text-center">
+                  <p className="line-clamp-1 text-sm font-semibold transition-colors group-hover:text-white">
+                    {brand.name}
+                  </p>
+                  <p className="font-mono text-[10px] tracking-wider text-muted-foreground transition-colors group-hover:text-white/70">
+                    {brand.featuredOrderCount} đơn · {brand.featuredVariantCount} biến thể
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

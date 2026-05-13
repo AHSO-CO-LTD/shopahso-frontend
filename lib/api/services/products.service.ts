@@ -37,3 +37,20 @@ export function deleteBackofficeProduct(id: string) {
     method: "DELETE",
   });
 }
+
+export function uploadBackofficeProductImage(id: string, file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  return authenticatedApiRequest<ProductSummary>(`/backoffice/products/${id}/images`, {
+    body: formData,
+    method: "POST",
+  });
+}
+
+export function deleteBackofficeProductImage(id: string, publicId: string) {
+  return authenticatedApiRequest<ProductSummary>(`/backoffice/products/${id}/images`, {
+    body: { publicId },
+    method: "DELETE",
+  });
+}

@@ -3,6 +3,7 @@ export type Brand = {
   name: string;
   slug: string;
   logoUrl: string | null;
+  logoPublicId: string | null;
   active: boolean;
   createdAt: string;
   updatedAt: string;

@@ -98,7 +98,12 @@ export default function StaffProductList() {
                       <p className="truncate text-xs text-muted-foreground">slug: {product.slug}</p>
                       <p className="truncate text-xs text-muted-foreground">variants: {product._count.variants}</p>
                     </div>
-                    <p className="text-center text-xs font-semibold">{product.active ? "Hoạt động" : "Tạm ẩn"}</p>
+                    <div className="text-center text-xs font-semibold">
+                      <p>{product.status}</p>
+                      <p className="mt-1 text-[10px] text-muted-foreground">
+                        {product.active ? "Hoạt động" : "Tạm ẩn"}
+                      </p>
+                    </div>
                     <div className="text-right">
                       <Button asChild className="h-9 px-3 text-xs font-semibold" variant="outline">
                         <Link href={`/nhan-vien/san-pham/${product.id}`}>Quản lý</Link>

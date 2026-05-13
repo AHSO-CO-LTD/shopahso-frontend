@@ -1,12 +1,12 @@
-"use client";
+﻿"use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { generateSlug } from "@/lib/api/services/slug.service";
 import type { Brand } from "@/lib/brand/types";
 import type { BackofficeCategory } from "@/lib/category/types";
-import type { CreateProductPayload } from "@/lib/product/types";
+import type { CreateProductPayload, ProductStatus } from "@/lib/product/types";
 
 export type ProductFormValue = {
   categoryId: string;
@@ -15,6 +15,7 @@ export type ProductFormValue = {
   slug: string;
   description: string;
   datasheetUrl: string;
+  status: ProductStatus;
   active: boolean;
 };
 
@@ -22,6 +23,7 @@ type ProductFormProps = {
   categories: BackofficeCategory[];
   brands: Brand[];
   defaultValue?: ProductFormValue;
+  imageUploadSlot?: ReactNode;
   isDeleting?: boolean;
   isEditMode?: boolean;
   isSubmitting: boolean;
@@ -37,8 +39,11 @@ export const DEFAULT_PRODUCT_FORM_VALUE: ProductFormValue = {
   slug: "",
   description: "",
   datasheetUrl: "",
+  status: "DRAFT",
   active: true,
 };
+
+type SubmitIntent = "default" | "draft" | "publish";
 
 function isValidHttpUrl(value: string) {
   try {
@@ -49,7 +54,10 @@ function isValidHttpUrl(value: string) {
   }
 }
 
-function normalizePayload(formValue: ProductFormValue): CreateProductPayload {
+function normalizePayload(formValue: ProductFormValue, submitIntent: SubmitIntent): CreateProductPayload {
+  const normalizedStatus: ProductStatus =
+    submitIntent === "draft" ? "DRAFT" : submitIntent === "publish" ? "PUBLISHED" : formValue.status;
+
   return {
     categoryId: formValue.categoryId,
     brandId: formValue.brandId || undefined,
@@ -57,14 +65,34 @@ function normalizePayload(formValue: ProductFormValue): CreateProductPayload {
     slug: formValue.slug.trim(),
     description: formValue.description.trim() || undefined,
     datasheetUrl: formValue.datasheetUrl.trim() || undefined,
+    status: normalizedStatus,
     active: formValue.active,
   };
+}
+
+function SectionTitle({ title, description }: { title: string; description?: string }) {
+  return (
+    <div>
+      <h3 className="text-base font-black tracking-tight">{title}</h3>
+      {description ? <p className="mt-1 text-xs text-muted-foreground">{description}</p> : null}
+    </div>
+  );
+}
+
+function FieldLabel({ children, required = false }: { children: string; required?: boolean }) {
+  return (
+    <span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+      {children}
+      {required ? " *" : ""}
+    </span>
+  );
 }
 
 export default function ProductForm({
   categories,
   brands,
   defaultValue = DEFAULT_PRODUCT_FORM_VALUE,
+  imageUploadSlot,
   isDeleting = false,
   isEditMode = false,
   isSubmitting,
@@ -75,6 +103,7 @@ export default function ProductForm({
   const [formValue, setFormValue] = useState<ProductFormValue>(defaultValue);
   const [isGeneratingSlug, setIsGeneratingSlug] = useState(false);
   const [isSlugEditedManually, setIsSlugEditedManually] = useState(false);
+  const [submitIntent, setSubmitIntent] = useState<SubmitIntent>("default");
 
   const handleGenerateSlug = async (sourceText: string, force = false) => {
     if (!sourceText.trim()) {
@@ -83,6 +112,7 @@ export default function ProductForm({
     if (!force && isSlugEditedManually) {
       return;
     }
+
     setIsGeneratingSlug(true);
     try {
       const response = await generateSlug({ text: sourceText.trim() });
@@ -107,133 +137,227 @@ export default function ProductForm({
       return;
     }
 
-    await onSubmit(normalizePayload(formValue));
+    await onSubmit(normalizePayload(formValue, submitIntent));
 
     if (!isEditMode) {
       setFormValue(DEFAULT_PRODUCT_FORM_VALUE);
+      toast.success("Đã reset form tạo sản phẩm.");
     }
 
     setIsSlugEditedManually(false);
+    setSubmitIntent("default");
+  };
+
+  const handleResetCreateForm = () => {
+    setFormValue(DEFAULT_PRODUCT_FORM_VALUE);
+    setIsSlugEditedManually(false);
+    setSubmitIntent("default");
+    toast.success("Đã hủy thay đổi tạm thời.");
   };
 
   return (
-    <form className="space-y-4" onSubmit={handleSubmit}>
-      <label className="grid gap-2 text-sm">
-        <span className="font-semibold">Danh mục</span>
-        <select
-          className="h-11 cursor-pointer border border-border bg-background px-3 outline-none focus:border-primary"
-          onChange={(event) => setFormValue((current) => ({ ...current, categoryId: event.target.value }))}
-          required
-          value={formValue.categoryId}
-        >
-          <option value="">Chọn danh mục</option>
-          {categories.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.name}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <label className="grid gap-2 text-sm">
-        <span className="font-semibold">Thương hiệu</span>
-        <select
-          className="h-11 cursor-pointer border border-border bg-background px-3 outline-none focus:border-primary"
-          onChange={(event) => setFormValue((current) => ({ ...current, brandId: event.target.value }))}
-          value={formValue.brandId}
-        >
-          <option value="">Không gắn thương hiệu</option>
-          {brands.map((brand) => (
-            <option key={brand.id} value={brand.id}>
-              {brand.name}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <label className="grid gap-2 text-sm">
-        <span className="font-semibold">Tên sản phẩm</span>
-        <input
-          className="h-11 border border-border bg-background px-3 outline-none focus:border-primary"
-          onBlur={() => void handleGenerateSlug(formValue.name)}
-          onChange={(event) => setFormValue((current) => ({ ...current, name: event.target.value }))}
-          required
-          type="text"
-          value={formValue.name}
-        />
-      </label>
-
-      <div className="grid gap-2 text-sm">
-        <div className="flex items-center justify-between">
-          <span className="font-semibold">Slug</span>
+    <form className="space-y-5" onSubmit={handleSubmit}>
+      {!isEditMode ? (
+        <div className="flex flex-wrap items-center justify-end gap-2 border border-border bg-muted/10 px-4 py-3">
           <Button
-            className="h-8 px-3 text-xs font-semibold"
-            disabled={!formValue.name.trim() || isGeneratingSlug || isSubmitting}
-            onClick={() => void handleGenerateSlug(formValue.name, true)}
+            className="h-9 cursor-pointer px-3 text-xs font-semibold"
+            disabled={isSubmitting || isDeleting}
+            onClick={handleResetCreateForm}
             type="button"
             variant="outline"
           >
-            {isGeneratingSlug ? "Đang tạo..." : "Tạo lại slug"}
+            Hủy nháp
+          </Button>
+          <Button
+            className="h-9 cursor-pointer px-3 text-xs font-semibold"
+            disabled={isSubmitting || isDeleting}
+            onClick={() => setSubmitIntent("draft")}
+            type="submit"
+            variant="outline"
+          >
+            {isSubmitting && submitIntent === "draft" ? "Đang lưu nháp..." : "Lưu nháp"}
+          </Button>
+          <Button
+            className="h-9 cursor-pointer px-3 text-xs font-semibold"
+            disabled={isSubmitting || isDeleting}
+            onClick={() => setSubmitIntent("publish")}
+            type="submit"
+          >
+            {isSubmitting && submitIntent === "publish" ? "Đang xuất bản..." : "Xuất bản"}
           </Button>
         </div>
-        <input
-          className="h-11 border border-border bg-background px-3 outline-none focus:border-primary"
-          onChange={(event) => {
-            setIsSlugEditedManually(true);
-            setFormValue((current) => ({ ...current, slug: event.target.value }));
-          }}
-          required
-          type="text"
-          value={formValue.slug}
-        />
+      ) : null}
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <section className="space-y-5">
+          <article className="space-y-4 border border-border p-4 md:p-5">
+            <SectionTitle title="Chi tiết sản phẩm" description="Thông tin cốt lõi để tạo sản phẩm và hiển thị catalog." />
+
+            <label className="grid gap-2 text-sm">
+              <FieldLabel required>Tên sản phẩm</FieldLabel>
+              <input
+                className="h-11 border border-border bg-background px-3 outline-none focus:border-primary"
+                onBlur={() => void handleGenerateSlug(formValue.name)}
+                onChange={(event) => setFormValue((current) => ({ ...current, name: event.target.value }))}
+                required
+                type="text"
+                value={formValue.name}
+              />
+            </label>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="grid gap-2 text-sm">
+                <FieldLabel required>Slug</FieldLabel>
+                <input
+                  className="h-11 border border-border bg-background px-3 outline-none focus:border-primary"
+                  onChange={(event) => {
+                    setIsSlugEditedManually(true);
+                    setFormValue((current) => ({ ...current, slug: event.target.value }));
+                  }}
+                  required
+                  type="text"
+                  value={formValue.slug}
+                />
+              </label>
+
+              <div className="grid content-end">
+                <Button
+                  className="h-11 w-full cursor-pointer px-3 text-sm font-semibold"
+                  disabled={!formValue.name.trim() || isGeneratingSlug || isSubmitting}
+                  onClick={() => void handleGenerateSlug(formValue.name, true)}
+                  type="button"
+                  variant="outline"
+                >
+                  {isGeneratingSlug ? "Đang tạo slug..." : "Tạo lại slug"}
+                </Button>
+              </div>
+            </div>
+
+            <label className="grid gap-2 text-sm">
+              <FieldLabel>Mô tả (không bắt buộc)</FieldLabel>
+              <textarea
+                className="min-h-28 border border-border bg-background px-3 py-2 outline-none focus:border-primary"
+                onChange={(event) => setFormValue((current) => ({ ...current, description: event.target.value }))}
+                value={formValue.description}
+              />
+            </label>
+          </article>
+
+          {imageUploadSlot}
+        </section>
+
+        <aside className="space-y-5">
+          <article className="space-y-4 border border-border p-4 md:p-5">
+            <SectionTitle title="Phân loại" description="Gán danh mục, thương hiệu và tài liệu kỹ thuật." />
+
+            <label className="grid gap-2 text-sm">
+              <FieldLabel required>Danh mục</FieldLabel>
+              <select
+                className="h-11 cursor-pointer border border-border bg-background px-3 outline-none focus:border-primary"
+                onChange={(event) => setFormValue((current) => ({ ...current, categoryId: event.target.value }))}
+                required
+                value={formValue.categoryId}
+              >
+                <option value="">Chọn danh mục</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="grid gap-2 text-sm">
+              <FieldLabel>Thương hiệu</FieldLabel>
+              <select
+                className="h-11 cursor-pointer border border-border bg-background px-3 outline-none focus:border-primary"
+                onChange={(event) => setFormValue((current) => ({ ...current, brandId: event.target.value }))}
+                value={formValue.brandId}
+              >
+                <option value="">Không gắn thương hiệu</option>
+                {brands.map((brand) => (
+                  <option key={brand.id} value={brand.id}>
+                    {brand.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="grid gap-2 text-sm">
+              <FieldLabel>Datasheet URL</FieldLabel>
+              <input
+                className="h-11 border border-border bg-background px-3 outline-none focus:border-primary"
+                onChange={(event) => setFormValue((current) => ({ ...current, datasheetUrl: event.target.value }))}
+                placeholder="https://example.com/datasheet.pdf"
+                type="url"
+                value={formValue.datasheetUrl}
+              />
+            </label>
+          </article>
+
+          <article className="space-y-4 border border-border p-4 md:p-5">
+            <SectionTitle title="Trạng thái" description="DRAFT để nháp, PUBLISHED để xuất bản ra catalog." />
+
+            <label className="grid gap-2 text-sm">
+              <FieldLabel required>Trạng thái xuất bản</FieldLabel>
+              <select
+                className="h-11 cursor-pointer border border-border bg-background px-3 outline-none focus:border-primary"
+                onChange={(event) =>
+                  setFormValue((current) => ({
+                    ...current,
+                    status: event.target.value as ProductStatus,
+                  }))
+                }
+                value={formValue.status}
+              >
+                <option value="DRAFT">DRAFT</option>
+                <option value="PUBLISHED">PUBLISHED</option>
+              </select>
+            </label>
+
+            <label className="grid gap-2 text-sm">
+              <FieldLabel>Kích hoạt</FieldLabel>
+              <select
+                className="h-11 cursor-pointer border border-border bg-background px-3 outline-none focus:border-primary"
+                onChange={(event) => setFormValue((current) => ({ ...current, active: event.target.value === "true" }))}
+                value={String(formValue.active)}
+              >
+                <option value="true">Hoạt động</option>
+                <option value="false">Tạm ẩn</option>
+              </select>
+            </label>
+          </article>
+        </aside>
       </div>
 
-      <label className="grid gap-2 text-sm">
-        <span className="font-semibold">Mô tả</span>
-        <textarea
-          className="min-h-20 border border-border bg-background px-3 py-2 outline-none focus:border-primary"
-          onChange={(event) => setFormValue((current) => ({ ...current, description: event.target.value }))}
-          value={formValue.description}
-        />
-      </label>
-
-      <label className="grid gap-2 text-sm">
-        <span className="font-semibold">Datasheet URL</span>
-        <input
-          className="h-11 border border-border bg-background px-3 outline-none focus:border-primary"
-          onChange={(event) => setFormValue((current) => ({ ...current, datasheetUrl: event.target.value }))}
-          type="url"
-          value={formValue.datasheetUrl}
-        />
-      </label>
-
-      <label className="grid gap-2 text-sm">
-        <span className="font-semibold">Trạng thái</span>
-        <select
-          className="h-11 cursor-pointer border border-border bg-background px-3 outline-none focus:border-primary"
-          onChange={(event) => setFormValue((current) => ({ ...current, active: event.target.value === "true" }))}
-          value={String(formValue.active)}
-        >
-          <option value="true">Hoạt động</option>
-          <option value="false">Tạm ẩn</option>
-        </select>
-      </label>
-
-      <div className="flex justify-end gap-2">
-        {isEditMode && onCancelEdit ? (
-          <Button className="h-10 px-4 text-sm font-semibold" onClick={onCancelEdit} type="button" variant="outline">
-            Hủy chọn
+      {isEditMode ? (
+        <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-4">
+          {onCancelEdit ? (
+            <Button
+              className="h-10 cursor-pointer px-4 text-sm font-semibold"
+              onClick={onCancelEdit}
+              type="button"
+              variant="outline"
+            >
+              Hủy chọn
+            </Button>
+          ) : null}
+          {onDelete ? (
+            <Button
+              className="h-10 cursor-pointer px-4 text-sm font-semibold"
+              disabled={isSubmitting}
+              onClick={onDelete}
+              type="button"
+              variant="destructive"
+            >
+              {isDeleting ? "Đang ẩn..." : "Ẩn sản phẩm"}
+            </Button>
+          ) : null}
+          <Button className="h-10 cursor-pointer px-4 text-sm font-semibold" disabled={isSubmitting || isDeleting} type="submit">
+            {isSubmitting ? "Đang lưu..." : "Lưu thay đổi"}
           </Button>
-        ) : null}
-        {isEditMode && onDelete ? (
-          <Button className="h-10 px-4 text-sm font-semibold" onClick={onDelete} type="button" variant="destructive">
-            {isDeleting ? "Đang ẩn..." : "Ẩn sản phẩm"}
-          </Button>
-        ) : null}
-        <Button className="h-10 px-4 text-sm font-semibold" disabled={isSubmitting || isDeleting} type="submit">
-          {isSubmitting ? (isEditMode ? "Đang lưu..." : "Đang tạo...") : isEditMode ? "Lưu thay đổi" : "Tạo sản phẩm"}
-        </Button>
-      </div>
+        </div>
+      ) : null}
     </form>
   );
 }

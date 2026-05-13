@@ -1,28 +1,27 @@
 ﻿"use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import ConfirmModal from "@/components/common/ConfirmModal";
 import StaffLayout from "@/components/staff/StaffLayout";
-import CategoryCreateForm, {
-  DEFAULT_CATEGORY_FORM_VALUE,
-  type CategoryFormValue,
-} from "@/components/staff/categories/CategoryCreateForm";
+import CategoryCreateForm from "@/components/staff/categories/CategoryCreateForm";
 import { Button } from "@/components/ui/button";
+import { ApiError } from "@/lib/api/client";
 import {
   createBackofficeCategory,
   deleteBackofficeCategory,
   listBackofficeCategories,
-  updateBackofficeCategory,
 } from "@/lib/api/services/categories.service";
-import { ApiError } from "@/lib/api/client";
 import type {
   BackofficeCategory,
   CreateBackofficeCategoryPayload,
 } from "@/lib/category/types";
 
 function sortCategories(items: BackofficeCategory[]) {
-  return [...items].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, "vi"));
+  return [...items].sort(
+    (a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, "vi"),
+  );
 }
 
 export default function StaffCategoryCreate() {
@@ -32,11 +31,9 @@ export default function StaffCategoryCreate() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [editingCategoryId, setEditingCategoryId] = useState<string>("");
   const [deletingCategory, setDeletingCategory] = useState<BackofficeCategory | null>(null);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [searchKeywordDebounced, setSearchKeywordDebounced] = useState("");
-  const sharedFormContainerRef = useRef<HTMLDivElement | null>(null);
 
   const loadCategories = useCallback(async (keyword?: string) => {
     setIsLoading(true);
@@ -45,8 +42,7 @@ export default function StaffCategoryCreate() {
       const response = await listBackofficeCategories({
         q: keyword?.trim() ? keyword.trim() : undefined,
       });
-      const sorted = sortCategories(response);
-      setCategories(sorted);
+      setCategories(sortCategories(response));
       setErrorMessage(null);
     } catch (error) {
       setErrorMessage(
@@ -82,35 +78,6 @@ export default function StaffCategoryCreate() {
     void loadCategories(searchKeywordDebounced);
   };
 
-  const selectedCategory = useMemo(
-    () => categories.find((item) => item.id === editingCategoryId) ?? null,
-    [categories, editingCategoryId],
-  );
-
-  const isEditMode = Boolean(selectedCategory);
-
-  const categoryFormDefaultValue: CategoryFormValue = useMemo(() => {
-    if (!selectedCategory) {
-      return DEFAULT_CATEGORY_FORM_VALUE;
-    }
-
-    return {
-      parentId: selectedCategory.parentId ?? "",
-      name: selectedCategory.name,
-      slug: selectedCategory.slug,
-      description: selectedCategory.description ?? "",
-      active: selectedCategory.active,
-    };
-  }, [selectedCategory]);
-
-  const parentCategoryOptions = useMemo(() => {
-    if (!selectedCategory) {
-      return categories;
-    }
-
-    return categories.filter((item) => item.id !== selectedCategory.id);
-  }, [categories, selectedCategory]);
-
   const handleCreateCategory = async (payload: CreateBackofficeCategoryPayload) => {
     if (!payload.name || !payload.slug) {
       toast.warning("Vui lòng nhập đầy đủ tên danh mục và slug.");
@@ -140,37 +107,6 @@ export default function StaffCategoryCreate() {
     }
   };
 
-  const handleSubmitCategory = async (payload: CreateBackofficeCategoryPayload) => {
-    if (isEditMode && selectedCategory) {
-      if (!payload.name.trim() || !payload.slug.trim()) {
-        toast.warning("Vui lòng nhập đầy đủ tên danh mục và slug.");
-        return;
-      }
-
-      setIsSubmitting(true);
-      const loadingId = toast.loading("Đang cập nhật danh mục...");
-
-      try {
-        const updatedCategory = await updateBackofficeCategory(selectedCategory.id, payload);
-        setCategories((current) =>
-          sortCategories(
-            current.map((item) => (item.id === updatedCategory.id ? updatedCategory : item)),
-          ),
-        );
-        toast.success("Cập nhật danh mục thành công.", { id: loadingId });
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Không thể cập nhật danh mục.", {
-          id: loadingId,
-        });
-      } finally {
-        setIsSubmitting(false);
-      }
-
-      return;
-    }
-    await handleCreateCategory(payload);
-  };
-
   const handleDeleteCategory = async () => {
     if (!deletingCategory) {
       return;
@@ -182,13 +118,12 @@ export default function StaffCategoryCreate() {
     try {
       const deletedCategory = await deleteBackofficeCategory(deletingCategory.id);
       setCategories((current) =>
-        sortCategories(current.map((item) => (item.id === deletedCategory.id ? deletedCategory : item))),
+        sortCategories(
+          current.map((item) =>
+            item.id === deletedCategory.id ? deletedCategory : item,
+          ),
+        ),
       );
-
-      if (editingCategoryId === deletedCategory.id) {
-        setEditingCategoryId("");
-      }
-
       toast.success("Đã xóa mềm danh mục.", { id: loadingId });
       setDeletingCategory(null);
     } catch (error) {
@@ -211,26 +146,16 @@ export default function StaffCategoryCreate() {
               </p>
               <h2 className="mt-2 text-2xl font-black tracking-tight">Tạo danh mục mới</h2>
               <p className="mt-2 text-sm text-muted-foreground">
-                {isEditMode
-                  ? `Đang chỉnh sửa: ${selectedCategory?.name ?? "Danh mục"}`
-                  : "Nhập thông tin để tạo danh mục cho hệ thống cửa hàng."}
+                Nhập thông tin để tạo danh mục cho hệ thống cửa hàng.
               </p>
             </header>
-            <div ref={sharedFormContainerRef} className="flex-1 px-6 py-6">
+            <div className="flex-1 px-6 py-6">
               <CategoryCreateForm
-                key={selectedCategory?.id ?? "create-category-form"}
-                categories={parentCategoryOptions}
-                defaultValue={categoryFormDefaultValue}
-                isDeleting={isDeleting}
-                isEditMode={isEditMode}
+                categories={categories}
+                isDeleting={false}
+                isEditMode={false}
                 isSubmitting={isSubmitting}
-                onCancelEdit={() => setEditingCategoryId("")}
-                onDelete={() => {
-                  if (selectedCategory) {
-                    setDeletingCategory(selectedCategory);
-                  }
-                }}
-                onSubmit={handleSubmitCategory}
+                onSubmit={handleCreateCategory}
               />
             </div>
           </article>
@@ -278,67 +203,58 @@ export default function StaffCategoryCreate() {
               </div>
             ) : (
               <div className="flex min-h-0 flex-1 flex-col space-y-4 px-6 py-6">
-                <div className="grid grid-cols-[minmax(0,1fr)_92px_86px] border border-border bg-muted/20 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                <div className="grid grid-cols-[minmax(0,1fr)_92px_100px] border border-border bg-muted/20 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                   <p>Thông tin</p>
                   <p className="text-center">Trạng thái</p>
                   <p className="text-right">Thao tác</p>
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto border border-border">
                   <ul className="divide-y divide-border">
-                    {categories.map((category) => {
-                      const isEditing = editingCategoryId === category.id;
-
-                      return (
-                        <li key={category.id} className="grid grid-cols-[minmax(0,1fr)_92px_86px] items-center gap-3 px-4 py-4">
-                          <div className="min-w-0 space-y-1">
-                            <p className="truncate font-semibold">{category.name}</p>
-                            <p className="truncate text-xs text-muted-foreground">slug: {category.slug}</p>
-                            {category.parent ? (
-                              <p className="truncate text-xs text-muted-foreground">
-                                cha: {category.parent.name}
-                              </p>
-                            ) : null}
-                          </div>
-                          <div className="text-center">
-                            <span
-                              className={[
-                                "inline-flex min-w-20 justify-center border px-2 py-1 text-[11px] font-semibold",
-                                category.active
-                                  ? "border-primary/40 bg-primary/10 text-primary"
-                                  : "border-border bg-muted text-muted-foreground",
-                              ].join(" ")}
-                            >
-                              {category.active ? "Hoạt động" : "Tạm ẩn"}
-                            </span>
-                          </div>
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              className="h-8 cursor-pointer px-2 text-[11px] font-semibold"
-                              onClick={() => setEditingCategoryId(category.id)}
-                              type="button"
-                              variant={isEditing ? "default" : "outline"}
-                            >
-                              Sửa
-                            </Button>
-                            <Button
-                              className="h-8 cursor-pointer px-2 text-[11px] font-semibold"
-                              onClick={() => setDeletingCategory(category)}
-                              type="button"
-                              variant="destructive"
-                            >
-                              Xóa
-                            </Button>
-                          </div>
-                        </li>
-                      );
-                    })}
+                    {categories.map((category) => (
+                      <li key={category.id} className="grid grid-cols-[minmax(0,1fr)_92px_100px] items-center gap-3 px-4 py-4">
+                        <div className="min-w-0 space-y-1">
+                          <p className="truncate font-semibold">{category.name}</p>
+                          <p className="truncate text-xs text-muted-foreground">slug: {category.slug}</p>
+                          {category.parent ? (
+                            <p className="truncate text-xs text-muted-foreground">
+                              cha: {category.parent.name}
+                            </p>
+                          ) : null}
+                        </div>
+                        <div className="text-center">
+                          <span
+                            className={[
+                              "inline-flex min-w-20 justify-center border px-2 py-1 text-[11px] font-semibold",
+                              category.active
+                                ? "border-primary/40 bg-primary/10 text-primary"
+                                : "border-border bg-muted text-muted-foreground",
+                            ].join(" ")}
+                          >
+                            {category.active ? "Hoạt động" : "Tạm ẩn"}
+                          </span>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <Button asChild className="h-8 cursor-pointer px-2 text-[11px] font-semibold" variant="outline">
+                            <Link href={`/nhan-vien/danh-muc/${category.id}`}>Sửa</Link>
+                          </Button>
+                          <Button
+                            className="h-8 cursor-pointer px-2 text-[11px] font-semibold"
+                            onClick={() => setDeletingCategory(category)}
+                            type="button"
+                            variant="destructive"
+                          >
+                            Xóa
+                          </Button>
+                        </div>
+                      </li>
+                    ))}
                   </ul>
                 </div>
                 {isSearching ? (
                   <p className="text-xs text-muted-foreground">Đang tìm kiếm danh mục...</p>
                 ) : null}
                 <div className="text-sm text-muted-foreground">
-                  Nhấn nút Sửa ở danh sách để nạp dữ liệu vào form bên trái.
+                  Nhấn nút Sửa để mở trang chi tiết danh mục và quản lý thông số kỹ thuật.
                 </div>
               </div>
             )}

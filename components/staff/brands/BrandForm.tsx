@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { generateSlug } from "@/lib/api/services/slug.service";
@@ -9,12 +9,12 @@ import type { CreateBrandPayload } from "@/lib/brand/types";
 export type BrandFormValue = {
   name: string;
   slug: string;
-  logoUrl: string;
   active: boolean;
 };
 
 type BrandFormProps = {
   defaultValue?: BrandFormValue;
+  extraContentBeforeActions?: ReactNode;
   isDeleting?: boolean;
   isEditMode?: boolean;
   isSubmitting: boolean;
@@ -26,30 +26,20 @@ type BrandFormProps = {
 export const DEFAULT_BRAND_FORM_VALUE: BrandFormValue = {
   name: "",
   slug: "",
-  logoUrl: "",
   active: true,
 };
-
-function isValidHttpUrl(value: string) {
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
 
 function normalizePayload(formValue: BrandFormValue): CreateBrandPayload {
   return {
     name: formValue.name.trim(),
     slug: formValue.slug.trim(),
-    logoUrl: formValue.logoUrl.trim() || undefined,
     active: formValue.active,
   };
 }
 
 export default function BrandForm({
   defaultValue = DEFAULT_BRAND_FORM_VALUE,
+  extraContentBeforeActions,
   isDeleting = false,
   isEditMode = false,
   isSubmitting,
@@ -83,12 +73,6 @@ export default function BrandForm({
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
-    if (formValue.logoUrl.trim() && !isValidHttpUrl(formValue.logoUrl.trim())) {
-      toast.warning("Logo URL phải là đường dẫn hợp lệ, bắt đầu bằng http:// hoặc https://.");
-      return;
-    }
-
     await onSubmit(normalizePayload(formValue));
 
     if (!isEditMode) {
@@ -142,31 +126,19 @@ export default function BrandForm({
       </div>
 
       <label className="grid gap-2 text-sm">
-        <span className="font-semibold">Logo URL</span>
-        <input
-          className="h-11 border border-border bg-background px-3 outline-none focus:border-primary disabled:opacity-60"
-          disabled={isSubmitting}
-          onChange={(event) => setFormValue((current) => ({ ...current, logoUrl: event.target.value }))}
-          placeholder="https://cdn.example.com/brand-logo.png"
-          type="url"
-          value={formValue.logoUrl}
-        />
-      </label>
-
-      <label className="grid gap-2 text-sm">
         <span className="font-semibold">Trạng thái</span>
         <select
           className="h-11 cursor-pointer border border-border bg-background px-3 outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-60"
           disabled={isSubmitting}
-          onChange={(event) =>
-            setFormValue((current) => ({ ...current, active: event.target.value === "true" }))
-          }
+          onChange={(event) => setFormValue((current) => ({ ...current, active: event.target.value === "true" }))}
           value={String(formValue.active)}
         >
           <option value="true">Hoạt động</option>
           <option value="false">Tạm ẩn</option>
         </select>
       </label>
+
+      {extraContentBeforeActions}
 
       <div className="flex justify-end">
         <div className="flex gap-2">
@@ -196,18 +168,8 @@ export default function BrandForm({
               ) : null}
             </>
           ) : null}
-          <Button
-            className="h-11 min-w-40 text-sm font-semibold"
-            disabled={isSubmitting || isDeleting}
-            type="submit"
-          >
-            {isSubmitting
-              ? isEditMode
-                ? "Đang lưu..."
-                : "Đang tạo..."
-              : isEditMode
-                ? "Lưu thay đổi"
-                : "Tạo thương hiệu"}
+          <Button className="h-11 min-w-40 text-sm font-semibold" disabled={isSubmitting || isDeleting} type="submit">
+            {isSubmitting ? (isEditMode ? "Đang lưu..." : "Đang tạo...") : isEditMode ? "Lưu thay đổi" : "Tạo thương hiệu"}
           </Button>
         </div>
       </div>

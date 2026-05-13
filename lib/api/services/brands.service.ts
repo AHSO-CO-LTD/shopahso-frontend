@@ -33,3 +33,13 @@ export function deleteBackofficeBrand(id: string) {
     method: "DELETE",
   });
 }
+
+export function uploadBackofficeBrandLogo(id: string, file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  return authenticatedApiRequest<Brand>(`/backoffice/brands/${id}/logo`, {
+    body: formData,
+    method: "POST",
+  });
+}

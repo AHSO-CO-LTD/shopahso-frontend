@@ -1,6 +1,9 @@
 import type { Brand } from "@/lib/brand/types";
 import type { BackofficeCategory } from "@/lib/category/types";
 
+export type ProductStatus = "DRAFT" | "PUBLISHED";
+export type AttributeDataType = "TEXT" | "NUMBER" | "BOOLEAN" | "ENUM";
+
 export type ProductVariantCount = {
   variants: number;
   attributes: number;
@@ -14,6 +17,9 @@ export type ProductSummary = {
   slug: string;
   description: string | null;
   datasheetUrl: string | null;
+  imageUrls: string[];
+  imagePublicIds: string[];
+  status: ProductStatus;
   active: boolean;
   createdAt: string;
   updatedAt: string;
@@ -32,6 +38,10 @@ export type VariantSummary = {
   name: string;
   slug: string;
   price: number;
+  costPrice: number | string | null;
+  salePrice: number | string | null;
+  discountPercent: number | string | null;
+  taxPercent: number | string | null;
   stockQuantity: number;
   unit: string | null;
   minOrderQuantity: number;
@@ -39,6 +49,13 @@ export type VariantSummary = {
   viewCount: number;
   orderCount: number;
   specSnapshot: Record<string, unknown> | null;
+  imageUrls: string[];
+  imagePublicIds: string[];
+  effectiveImageUrls: string[];
+  _count?: {
+    attributeValues: number;
+  };
+  attributeValues?: VariantAttributeValue[];
   active: boolean;
   createdAt: string;
   updatedAt: string;
@@ -47,8 +64,57 @@ export type VariantSummary = {
   product: ProductSummary;
 };
 
+export type CategoryAttributeTemplate = {
+  id: string;
+  categoryId: string;
+  name: string;
+  code: string;
+  dataType: AttributeDataType;
+  unit: string | null;
+  isFilterable: boolean;
+  isSearchable: boolean;
+  isRequired: boolean;
+  sortOrder: number;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ProductAttributeDefinition = {
+  id: string;
+  productId: string;
+  categoryTemplateId: string | null;
+  name: string;
+  code: string;
+  dataType: AttributeDataType;
+  unit: string | null;
+  isFilterable: boolean;
+  isSearchable: boolean;
+  isRequired: boolean;
+  sortOrder: number;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type VariantAttributeValue = {
+  id: string;
+  variantId: string;
+  productAttributeDefinitionId: string;
+  code: string;
+  dataType: AttributeDataType;
+  valueText: string | null;
+  valueNumber: number | null;
+  valueBoolean: boolean | null;
+  valueEnum: string | null;
+  createdAt: string;
+  updatedAt: string;
+  definition?: ProductAttributeDefinition;
+};
+
 export type ProductDetail = ProductSummary & {
   variants: VariantSummary[];
+  attributes: ProductAttributeDefinition[];
 };
 
 export type CreateProductPayload = {
@@ -58,6 +124,8 @@ export type CreateProductPayload = {
   slug: string;
   description?: string;
   datasheetUrl?: string;
+  imageUrls?: string[];
+  status?: ProductStatus;
   active?: boolean;
 };
 
@@ -70,6 +138,10 @@ export type CreateVariantPayload = {
   name: string;
   slug: string;
   price: number;
+  costPrice?: number;
+  salePrice?: number;
+  discountPercent?: number;
+  taxPercent?: number;
   stockQuantity: number;
   unit?: string;
   minOrderQuantity: number;
@@ -77,7 +149,50 @@ export type CreateVariantPayload = {
   viewCount: number;
   orderCount: number;
   specSnapshot: Record<string, unknown>;
+  imageUrls?: string[];
   active?: boolean;
 };
 
 export type UpdateVariantPayload = Partial<CreateVariantPayload>;
+
+export type CreateCategoryAttributeTemplatePayload = {
+  name: string;
+  code?: string;
+  dataType: AttributeDataType;
+  unit?: string;
+  isFilterable?: boolean;
+  isSearchable?: boolean;
+  isRequired?: boolean;
+  sortOrder?: number;
+  active?: boolean;
+};
+
+export type UpdateCategoryAttributeTemplatePayload = Partial<CreateCategoryAttributeTemplatePayload>;
+
+export type CreateProductAttributePayload = {
+  categoryTemplateId?: string;
+  name: string;
+  code?: string;
+  dataType: AttributeDataType;
+  unit?: string;
+  isFilterable?: boolean;
+  isSearchable?: boolean;
+  isRequired?: boolean;
+  sortOrder?: number;
+  active?: boolean;
+};
+
+export type UpdateProductAttributePayload = Partial<CreateProductAttributePayload>;
+
+export type VariantAttributeValueUpsertItem = {
+  productAttributeDefinitionId?: string;
+  code?: string;
+  valueText?: string;
+  valueNumber?: number;
+  valueBoolean?: boolean;
+  valueEnum?: string;
+};
+
+export type UpsertVariantAttributeValuesPayload = {
+  values: VariantAttributeValueUpsertItem[];
+};

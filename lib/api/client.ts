@@ -75,6 +75,10 @@ async function parseResponse<T>(response: Response, responseType: ApiResponseTyp
     return (await response.text()) as T;
   }
 
+  if (responseType === "blob") {
+    return (await response.blob()) as T;
+  }
+
   const rawText = await response.text();
 
   if (!rawText) {

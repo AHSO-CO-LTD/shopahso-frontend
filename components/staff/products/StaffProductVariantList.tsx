@@ -6,8 +6,8 @@ import { toast } from "sonner";
 import ConfirmModal from "@/components/common/ConfirmModal";
 import StaffLayout from "@/components/staff/StaffLayout";
 import { Button } from "@/components/ui/button";
-import { deleteBackofficeVariant } from "@/lib/api/services/variants.service";
 import { getBackofficeProduct } from "@/lib/api/services/products.service";
+import { deleteBackofficeVariant } from "@/lib/api/services/variants.service";
 import type { ProductDetail, VariantSummary } from "@/lib/product/types";
 
 export default function StaffProductVariantList({ productId }: { productId: string }) {
@@ -67,6 +67,9 @@ export default function StaffProductVariantList({ productId }: { productId: stri
               <Button asChild className="h-9 px-3 text-xs font-semibold" variant="outline">
                 <Link href={`/nhan-vien/san-pham/${productId}`}>Quay lại chi tiết sản phẩm</Link>
               </Button>
+              <Button asChild className="h-9 px-3 text-xs font-semibold" variant="outline">
+                <Link href={`/nhan-vien/san-pham/${productId}/bien-the/import`}>Import CSV</Link>
+              </Button>
               <Button asChild className="h-9 px-3 text-xs font-semibold">
                 <Link href={`/nhan-vien/san-pham/${productId}/bien-the/tao`}>Tạo biến thể</Link>
               </Button>
@@ -83,8 +86,16 @@ export default function StaffProductVariantList({ productId }: { productId: stri
               </Button>
             </div>
           ) : !productDetail || productDetail.variants.length === 0 ? (
-            <div className="px-6 py-8 text-sm text-muted-foreground">
-              Chưa có biến thể nào cho sản phẩm này.
+            <div className="space-y-4 px-6 py-8">
+              <p className="text-sm text-muted-foreground">Chưa có biến thể nào cho sản phẩm này.</p>
+              <div className="flex flex-wrap gap-2">
+                <Button asChild className="h-9 px-3 text-xs font-semibold">
+                  <Link href={`/nhan-vien/san-pham/${productId}/bien-the/tao`}>Tạo biến thể đầu tiên</Link>
+                </Button>
+                <Button asChild className="h-9 px-3 text-xs font-semibold" variant="outline">
+                  <Link href={`/nhan-vien/san-pham/${productId}/bien-the/import`}>Import từ CSV</Link>
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
@@ -97,14 +108,19 @@ export default function StaffProductVariantList({ productId }: { productId: stri
                 {productDetail.variants.map((variant) => (
                   <li key={variant.id} className="grid grid-cols-[minmax(0,1fr)_100px_140px] items-center gap-3 px-4 py-4">
                     <div className="min-w-0">
+                      <div className="mb-2 flex h-14 w-20 items-center justify-center border border-border bg-muted/15 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                        Ảnh
+                      </div>
                       <p className="truncate font-semibold">{variant.name}</p>
                       <p className="truncate text-xs text-muted-foreground">SKU: {variant.sku}</p>
                       <p className="truncate text-xs text-muted-foreground">Slug: {variant.slug}</p>
+                      <p className="truncate text-xs text-muted-foreground">MPN: {variant.manufacturerPartNumber || "Chưa có"}</p>
                       <p className="truncate text-xs text-muted-foreground">
-                        MPN: {variant.manufacturerPartNumber || "Chưa có"}
+                        Giá bán: {variant.price} | Giá nhập: {variant.costPrice ?? "Theo giá bán"} | Giá sau giảm: {variant.salePrice ?? "N/A"}
                       </p>
                       <p className="truncate text-xs text-muted-foreground">
-                        Giá: {variant.price} | Tồn kho: {variant.stockQuantity} | Đơn vị: {variant.unit || "N/A"}
+                        Giảm giá: {variant.discountPercent ?? "N/A"}% | Thuế: {variant.taxPercent ?? "N/A"}% | Tồn kho: {variant.stockQuantity} |
+                        Đơn vị: {variant.unit || "N/A"}
                       </p>
                       <p className="truncate text-xs text-muted-foreground">
                         MOQ: {variant.minOrderQuantity} | Điểm: {variant.score} | Xem: {variant.viewCount} | Mua: {variant.orderCount}
