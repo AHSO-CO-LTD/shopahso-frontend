@@ -102,3 +102,9 @@ export type CatalogFeaturedBrand = {
   featuredOrderCount: number;
   featuredVariantCount: number;
 };
+
+export type CatalogProductFilterOption = {
+  id: string;
+  name: string;
+  slug: string;
+};

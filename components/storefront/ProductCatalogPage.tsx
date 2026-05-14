@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -12,7 +12,8 @@ import {
 } from "@/lib/api/services/catalog-variants.service";
 import type { Brand } from "@/lib/brand/types";
 import type { CategoryTreeNode } from "@/lib/category/types";
-import type { CatalogVariant } from "@/lib/catalog/types";
+import type { CatalogProductFilterOption, CatalogVariant } from "@/lib/catalog/types";
+import { Skeleton } from "@/components/ui/skeleton";
 
 function flattenCategories(tree: CategoryTreeNode[]) {
   const items: Array<{ id: string; slug: string; label: string }> = [];
@@ -22,7 +23,7 @@ function flattenCategories(tree: CategoryTreeNode[]) {
       items.push({
         id: node.id,
         slug: node.slug,
-        label: `${"— ".repeat(depth)}${node.name}`,
+        label: `${"-- ".repeat(depth)}${node.name}`,
       });
 
       if (node.children.length > 0) {
@@ -37,20 +38,45 @@ function flattenCategories(tree: CategoryTreeNode[]) {
 
 type SortOption = "relevance" | "score" | "newest" | "price_asc" | "price_desc";
 
+function extractProductsFromVariants(items: CatalogVariant[]): CatalogProductFilterOption[] {
+  return items
+    .map((variant) => variant.product)
+    .filter((product): product is CatalogProductFilterOption => Boolean(product?.id && product?.name));
+}
+
+function mergeProductOptions(current: CatalogProductFilterOption[], incoming: CatalogProductFilterOption[]) {
+  const map = new Map(current.map((item) => [item.id, item]));
+
+  incoming.forEach((item) => {
+    if (item?.id && item?.name) {
+      map.set(item.id, item);
+    }
+  });
+
+  return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, "vi"));
+}
+
 export default function ProductCatalogPage() {
   const [variants, setVariants] = useState<CatalogVariant[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
+  const [products, setProducts] = useState<CatalogProductFilterOption[]>([]);
   const [categoryTree, setCategoryTree] = useState<CategoryTreeNode[]>([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [reloadTick, setReloadTick] = useState(0);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const categoryOptions = useMemo(() => flattenCategories(categoryTree), [categoryTree]);
   const keyword = searchParams.get("q") ?? "";
+  const keywordDebounceRef = useRef<number | null>(null);
+  const keywordInputRef = useRef<HTMLInputElement | null>(null);
+  const catalogTopRef = useRef<HTMLDivElement | null>(null);
+  const selectedProductSlug = searchParams.get("productSlug") ?? "";
+  const legacyProductId = searchParams.get("productId") ?? "";
   const selectedCategorySlug = searchParams.get("categorySlug") ?? "";
   const selectedBrandSlug = searchParams.get("brandSlug") ?? "";
   const priceMin = searchParams.get("priceMin") ?? "";
@@ -58,6 +84,7 @@ export default function ProductCatalogPage() {
   const sort = (searchParams.get("sort") as SortOption | null) ?? "relevance";
   const page = Number(searchParams.get("page") ?? "1");
   const limit = Number(searchParams.get("limit") ?? "24");
+
   const selectedCategoryId = useMemo(
     () => categoryOptions.find((category) => category.slug === selectedCategorySlug)?.id ?? "",
     [categoryOptions, selectedCategorySlug],
@@ -66,11 +93,29 @@ export default function ProductCatalogPage() {
     () => brands.find((brand) => brand.slug === selectedBrandSlug)?.id ?? "",
     [brands, selectedBrandSlug],
   );
+  const selectedProductId = useMemo(() => {
+    if (selectedProductSlug) {
+      return products.find((product) => product.slug === selectedProductSlug)?.id ?? "";
+    }
 
-  function updateQuery(
+    return legacyProductId;
+  }, [selectedProductSlug, legacyProductId, products]);
+  const selectedProductSlugValue = useMemo(() => {
+    if (selectedProductSlug) {
+      return selectedProductSlug;
+    }
+
+    if (!legacyProductId) {
+      return "";
+    }
+
+    return products.find((product) => product.id === legacyProductId)?.slug ?? "";
+  }, [selectedProductSlug, legacyProductId, products]);
+
+  const updateQuery = useCallback((
     updates: Record<string, string | null | undefined>,
     options?: { resetPage?: boolean },
-  ) {
+  ) => {
     const params = new URLSearchParams(searchParams.toString());
 
     Object.entries(updates).forEach(([key, value]) => {
@@ -87,24 +132,157 @@ export default function ProductCatalogPage() {
 
     const next = params.toString();
     router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+  }, [pathname, router, searchParams]);
+
+  function handleKeywordChange(rawValue: string) {
+    if (keywordDebounceRef.current !== null) {
+      window.clearTimeout(keywordDebounceRef.current);
+    }
+
+    keywordDebounceRef.current = window.setTimeout(() => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (rawValue.trim()) {
+        params.set("q", rawValue);
+      } else {
+        params.delete("q");
+      }
+      params.delete("page");
+      const next = params.toString();
+      router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+    }, 350);
+  }
+
+  function resetAllFilters() {
+    if (keywordDebounceRef.current !== null) {
+      window.clearTimeout(keywordDebounceRef.current);
+      keywordDebounceRef.current = null;
+    }
+    if (keywordInputRef.current) {
+      keywordInputRef.current.value = "";
+    }
+    router.replace(pathname, { scroll: false });
+  }
+
+  function scrollToCatalogTop() {
+    if (!catalogTopRef.current) {
+      return;
+    }
+
+    const nextTop = window.scrollY + catalogTopRef.current.getBoundingClientRect().top - 12;
+    window.scrollTo({ top: nextTop, behavior: "smooth" });
+  }
+
+  function handlePageChange(nextPage: number) {
+    updateQuery({ page: String(nextPage) });
+    window.requestAnimationFrame(scrollToCatalogTop);
   }
 
   useEffect(() => {
+    if (!keywordInputRef.current) {
+      return;
+    }
+
+    if (document.activeElement === keywordInputRef.current) {
+      return;
+    }
+
+    keywordInputRef.current.value = keyword;
+  }, [keyword]);
+
+  useEffect(() => {
+    return () => {
+      if (keywordDebounceRef.current !== null) {
+        window.clearTimeout(keywordDebounceRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    function handlePageShow(event: PageTransitionEvent) {
+      if (event.persisted) {
+        setReloadTick((currentTick) => currentTick + 1);
+      }
+    }
+
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, []);
+
+  useEffect(() => {
     async function loadInitialFilters() {
-      try {
-        const [brandsResponse, categoriesResponse] = await Promise.all([
-          listCatalogBrands(),
-          listCatalogCategoriesTree(),
-        ]);
-        setBrands(brandsResponse);
-        setCategoryTree(categoriesResponse);
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Không thể tải bộ lọc sản phẩm.");
+      const [brandsResult, categoriesResult] = await Promise.allSettled([
+        listCatalogBrands(),
+        listCatalogCategoriesTree(),
+      ]);
+
+      if (brandsResult.status === "fulfilled") {
+        setBrands(brandsResult.value);
+      } else {
+        toast.error("Không thể tải danh sách thương hiệu.");
+      }
+
+      if (categoriesResult.status === "fulfilled") {
+        setCategoryTree(categoriesResult.value);
+      } else {
+        toast.error("Không thể tải danh mục sản phẩm.");
       }
     }
 
     void loadInitialFilters();
-  }, []);
+  }, [reloadTick]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadAllProductsForFilter() {
+      try {
+        const firstPage = await searchCatalogVariants({
+          page: 1,
+          limit: 100,
+          sort: "relevance",
+        });
+
+        let merged = extractProductsFromVariants(firstPage.items);
+        const totalPagesToLoad = Math.max(firstPage.totalPages, 1);
+
+        for (let currentPage = 2; currentPage <= totalPagesToLoad; currentPage += 1) {
+          const pageResponse = await searchCatalogVariants({
+            page: currentPage,
+            limit: 100,
+            sort: "relevance",
+          });
+          merged = mergeProductOptions(merged, extractProductsFromVariants(pageResponse.items));
+        }
+
+        if (!cancelled) {
+          setProducts((current) => mergeProductOptions(current, merged));
+        }
+      } catch (error) {
+        if (!cancelled) {
+          toast.error(error instanceof Error ? error.message : "Không thể tải danh sách sản phẩm.");
+        }
+      }
+    }
+
+    void loadAllProductsForFilter();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadTick]);
+
+  useEffect(() => {
+    if (selectedProductSlug || !legacyProductId || products.length === 0) {
+      return;
+    }
+
+    const matchedProduct = products.find((product) => product.id === legacyProductId);
+    if (!matchedProduct?.slug) {
+      return;
+    }
+
+    updateQuery({ productSlug: matchedProduct.slug, productId: null });
+  }, [selectedProductSlug, legacyProductId, products, updateQuery]);
 
   useEffect(() => {
     async function loadVariants() {
@@ -114,6 +292,7 @@ export default function ProductCatalogPage() {
       try {
         const response = await searchCatalogVariants({
           q: keyword.trim() || undefined,
+          productId: selectedProductId || undefined,
           sort,
           page: Number.isFinite(page) && page > 0 ? page : 1,
           limit,
@@ -126,6 +305,11 @@ export default function ProductCatalogPage() {
         setVariants(response.items);
         setTotal(response.total);
         setTotalPages(Math.max(response.totalPages, 1));
+
+        const productsFromVariants = extractProductsFromVariants(response.items);
+        if (productsFromVariants.length > 0) {
+          setProducts((current) => mergeProductOptions(current, productsFromVariants));
+        }
       } catch (error) {
         setErrorMessage(error instanceof Error ? error.message : "Không thể tải danh sách sản phẩm.");
         setVariants([]);
@@ -137,18 +321,16 @@ export default function ProductCatalogPage() {
     }
 
     void loadVariants();
-  }, [keyword, sort, page, limit, priceMax, priceMin, selectedBrandId, selectedCategoryId]);
+  }, [keyword, selectedProductId, sort, page, limit, priceMax, priceMin, selectedBrandId, selectedCategoryId, reloadTick]);
 
   const startItem = total === 0 ? 0 : (page - 1) * limit + 1;
   const endItem = Math.min(page * limit, total);
 
-  function resetAllFilters() {
-    router.replace(pathname, { scroll: false });
-  }
-
   return (
     <main className="border-t border-border bg-background">
       <section className="container mx-auto px-4 py-10 lg:py-12">
+        <div ref={catalogTopRef} />
+
         <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
@@ -164,115 +346,158 @@ export default function ProductCatalogPage() {
           </p>
         </header>
 
-        <section className="mb-6 grid gap-3 border border-border bg-background p-4 lg:grid-cols-5">
-          <label className="grid gap-2 text-sm lg:col-span-2">
-            <span className="font-semibold">Từ khóa</span>
-            <input
-              className="h-10 border border-border px-3 outline-none focus:border-primary"
-              onChange={(event) => updateQuery({ q: event.target.value }, { resetPage: true })}
-              placeholder="VD: schneider, MCB-2P-20A..."
-              type="text"
-              value={keyword}
-            />
-          </label>
+        <section className="mb-6 grid gap-4 lg:grid-cols-3">
+          <div className="border border-border bg-background p-4 lg:col-span-2">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Bộ lọc</p>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+              <label className="grid gap-2 text-sm xl:col-span-5">
+                <span className="font-semibold">Từ khóa</span>
+                <input
+                  className="h-10 border border-border px-3 outline-none focus:border-primary"
+                  defaultValue={keyword}
+                  ref={keywordInputRef}
+                  onChange={(event) => handleKeywordChange(event.target.value)}
+                  placeholder="VD: schneider, MCB-2P-20A..."
+                  type="text"
+                />
+              </label>
 
-          <label className="grid gap-2 text-sm">
-            <span className="font-semibold">Sắp xếp</span>
-            <select
-              className="h-10 cursor-pointer border border-border bg-background px-3 outline-none focus:border-primary"
-              onChange={(event) =>
-                updateQuery({ sort: event.target.value as SortOption }, { resetPage: true })
-              }
-              value={sort}
-            >
-              <option value="relevance">Liên quan</option>
-              <option value="score">Điểm đánh giá</option>
-              <option value="newest">Mới nhất</option>
-              <option value="price_asc">Giá tăng dần</option>
-              <option value="price_desc">Giá giảm dần</option>
-            </select>
-          </label>
+              <label className="grid gap-2 text-sm">
+                <span className="font-semibold">Sắp xếp</span>
+                <select
+                  className="h-10 cursor-pointer border border-border bg-background px-3 outline-none focus:border-primary"
+                  onChange={(event) => updateQuery({ sort: event.target.value as SortOption }, { resetPage: true })}
+                  value={sort}
+                >
+                  <option value="relevance">Liên quan</option>
+                  <option value="score">Điểm đánh giá</option>
+                  <option value="newest">Mới nhất</option>
+                  <option value="price_asc">Giá tăng dần</option>
+                  <option value="price_desc">Giá giảm dần</option>
+                </select>
+              </label>
 
-          <label className="grid gap-2 text-sm">
-            <span className="font-semibold">Danh mục</span>
-            <select
-              className="h-10 cursor-pointer border border-border bg-background px-3 outline-none focus:border-primary"
-              onChange={(event) =>
-                updateQuery({ categorySlug: event.target.value }, { resetPage: true })
-              }
-              value={selectedCategorySlug}
-            >
-              <option value="">Tất cả danh mục</option>
-              {categoryOptions.map((category) => (
-                <option key={category.id} value={category.slug}>
-                  {category.label}
-                </option>
-              ))}
-            </select>
-          </label>
+              <label className="grid gap-2 text-sm">
+                <span className="font-semibold">Danh mục</span>
+                <select
+                  className="h-10 cursor-pointer border border-border bg-background px-3 outline-none focus:border-primary"
+                  onChange={(event) => updateQuery({ categorySlug: event.target.value }, { resetPage: true })}
+                  value={selectedCategorySlug}
+                >
+                  <option value="">Tất cả danh mục</option>
+                  {categoryOptions.map((category) => (
+                    <option key={category.id} value={category.slug}>
+                      {category.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-          <label className="grid gap-2 text-sm">
-            <span className="font-semibold">Thương hiệu</span>
-            <select
-              className="h-10 cursor-pointer border border-border bg-background px-3 outline-none focus:border-primary"
-              onChange={(event) => updateQuery({ brandSlug: event.target.value }, { resetPage: true })}
-              value={selectedBrandSlug}
-            >
-              <option value="">Tất cả thương hiệu</option>
-              {brands.map((brand) => (
-                <option key={brand.id} value={brand.slug}>
-                  {brand.name}
-                </option>
-              ))}
-            </select>
-          </label>
+              <label className="grid gap-2 text-sm">
+                <span className="font-semibold">Sản phẩm</span>
+                <select
+                  className="h-10 cursor-pointer border border-border bg-background px-3 outline-none focus:border-primary"
+                  onChange={(event) =>
+                    updateQuery(
+                      {
+                        productSlug: event.target.value,
+                        productId: null,
+                      },
+                      { resetPage: true },
+                    )
+                  }
+                  value={selectedProductSlugValue}
+                >
+                  <option value="">Tất cả sản phẩm</option>
+                  {products.map((product) => (
+                    <option key={product.id} value={product.slug}>
+                      {product.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-          <label className="grid gap-2 text-sm">
-            <span className="font-semibold">Giá thấp nhất</span>
-            <input
-              className="h-10 border border-border px-3 outline-none focus:border-primary"
-              min={0}
-              onChange={(event) => updateQuery({ priceMin: event.target.value }, { resetPage: true })}
-              placeholder="VD: 100000"
-              type="number"
-              value={priceMin}
-            />
-          </label>
+              <label className="grid gap-2 text-sm">
+                <span className="font-semibold">Thương hiệu</span>
+                <select
+                  className="h-10 cursor-pointer border border-border bg-background px-3 outline-none focus:border-primary"
+                  onChange={(event) => updateQuery({ brandSlug: event.target.value }, { resetPage: true })}
+                  value={selectedBrandSlug}
+                >
+                  <option value="">Tất cả thương hiệu</option>
+                  {brands.map((brand) => (
+                    <option key={brand.id} value={brand.slug}>
+                      {brand.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-          <label className="grid gap-2 text-sm">
-            <span className="font-semibold">Giá cao nhất</span>
-            <input
-              className="h-10 border border-border px-3 outline-none focus:border-primary"
-              min={0}
-              onChange={(event) => updateQuery({ priceMax: event.target.value }, { resetPage: true })}
-              placeholder="VD: 5000000"
-              type="number"
-              value={priceMax}
-            />
-          </label>
+              <div className="flex items-end">
+                <button
+                  type="button"
+                  onClick={resetAllFilters}
+                  className="inline-flex h-10 w-full cursor-pointer items-center justify-center border border-border px-3 text-sm font-semibold transition-colors hover:border-primary hover:text-primary"
+                >
+                  Xóa bộ lọc
+                </button>
+              </div>
+            </div>
+          </div>
 
-          <div className="flex items-end">
-            <button
-              type="button"
-              onClick={resetAllFilters}
-              className="inline-flex h-10 w-full cursor-pointer items-center justify-center border border-border px-3 text-sm font-semibold transition-colors hover:border-primary hover:text-primary"
-            >
-              Xóa bộ lọc
-            </button>
+          <div className="border border-border bg-background p-4">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Khoảng giá</p>
+            <div className="grid gap-3">
+              <label className="grid gap-2 text-sm">
+                <span className="font-semibold">Giá thấp nhất</span>
+                <input
+                  className="input-no-spin h-10 border border-border px-3 outline-none focus:border-primary"
+                  min={0}
+                  onWheel={(event) => event.currentTarget.blur()}
+                  onChange={(event) => updateQuery({ priceMin: event.target.value }, { resetPage: true })}
+                  placeholder="VD: 100000"
+                  type="number"
+                  value={priceMin}
+                />
+              </label>
+
+              <label className="grid gap-2 text-sm">
+                <span className="font-semibold">Giá cao nhất</span>
+                <input
+                  className="input-no-spin h-10 border border-border px-3 outline-none focus:border-primary"
+                  min={0}
+                  onWheel={(event) => event.currentTarget.blur()}
+                  onChange={(event) => updateQuery({ priceMax: event.target.value }, { resetPage: true })}
+                  placeholder="VD: 5000000"
+                  type="number"
+                  value={priceMax}
+                />
+              </label>
+            </div>
           </div>
         </section>
 
+        {!isLoading && !errorMessage && variants.length > 0 ? (
+          <PaginationControls
+            className="mb-6"
+            page={page}
+            totalPages={totalPages}
+            onNext={() => handlePageChange(page + 1)}
+            onPrev={() => handlePageChange(page - 1)}
+          />
+        ) : null}
+
         {isLoading ? (
-          <div className="border border-border p-8 text-sm text-muted-foreground">Đang tải sản phẩm...</div>
+          <CatalogSkeleton />
         ) : errorMessage ? (
-          <div className="border border-border p-8 text-sm text-destructive">{errorMessage}</div>
+          <div className="min-h-[24rem] border border-border p-8 text-sm text-destructive">{errorMessage}</div>
         ) : variants.length === 0 ? (
-          <div className="border border-border p-8 text-sm text-muted-foreground">
+          <div className="min-h-[24rem] border border-border p-8 text-sm text-muted-foreground">
             Không có sản phẩm phù hợp với bộ lọc hiện tại.
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid min-h-[24rem] content-start grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {variants.map((variant) => (
                 <article key={variant.id} className="flex flex-col border border-border bg-background">
                   <div className="border-b border-border bg-muted/15">
@@ -313,31 +538,53 @@ export default function ProductCatalogPage() {
               ))}
             </div>
 
-            <div className="mt-6 flex items-center justify-center gap-2">
-              <button
-                type="button"
-                disabled={page <= 1}
-                onClick={() => updateQuery({ page: String(page - 1) })}
-                className="inline-flex h-9 min-w-20 cursor-pointer items-center justify-center border border-border px-3 text-sm font-semibold transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Trước
-              </button>
-              <p className="px-2 text-sm text-muted-foreground">
-                Trang {page}/{totalPages}
-              </p>
-              <button
-                type="button"
-                disabled={page >= totalPages}
-                onClick={() => updateQuery({ page: String(page + 1) })}
-                className="inline-flex h-9 min-w-20 cursor-pointer items-center justify-center border border-border px-3 text-sm font-semibold transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Sau
-              </button>
-            </div>
+            <PaginationControls
+              className="mt-6"
+              page={page}
+              totalPages={totalPages}
+              onNext={() => handlePageChange(page + 1)}
+              onPrev={() => handlePageChange(page - 1)}
+            />
           </>
         )}
       </section>
     </main>
+  );
+}
+
+function PaginationControls({
+  className,
+  page,
+  totalPages,
+  onPrev,
+  onNext,
+}: {
+  className?: string;
+  page: number;
+  totalPages: number;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  return (
+    <div className={`${className ?? ""} flex items-center justify-center gap-2`}>
+      <button
+        type="button"
+        disabled={page <= 1}
+        onClick={onPrev}
+        className="inline-flex h-9 min-w-20 cursor-pointer items-center justify-center border border-border px-3 text-sm font-semibold transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        Trước
+      </button>
+      <p className="px-2 text-sm text-muted-foreground">Trang {page}/{totalPages}</p>
+      <button
+        type="button"
+        disabled={page >= totalPages}
+        onClick={onNext}
+        className="inline-flex h-9 min-w-20 cursor-pointer items-center justify-center border border-border px-3 text-sm font-semibold transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        Sau
+      </button>
+    </div>
   );
 }
 
@@ -349,5 +596,31 @@ function ButtonLink({ href, label }: { href: string; label: string }) {
     >
       {label}
     </Link>
+  );
+}
+
+function CatalogSkeleton() {
+  return (
+    <div className="grid min-h-[24rem] content-start grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {Array.from({ length: 8 }).map((_, index) => (
+        <article key={`catalog-skeleton-${index}`} className="flex flex-col border border-border bg-background">
+          <Skeleton className="aspect-[4/3] w-full" />
+          <div className="space-y-2 border-b border-border px-4 py-3">
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-5 w-full" />
+            <Skeleton className="h-5 w-4/5" />
+          </div>
+          <div className="flex flex-1 flex-col gap-2 px-4 py-4">
+            <Skeleton className="h-3 w-3/5" />
+            <Skeleton className="h-3 w-4/5" />
+            <Skeleton className="h-3 w-2/5" />
+            <Skeleton className="mt-1 h-6 w-1/2" />
+          </div>
+          <div className="border-t border-border px-4 py-3">
+            <Skeleton className="h-9 w-full" />
+          </div>
+        </article>
+      ))}
+    </div>
   );
 }

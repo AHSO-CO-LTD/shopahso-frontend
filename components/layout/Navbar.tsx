@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -111,13 +111,29 @@ const Navbar = () => {
     }
   };
 
+  function handleSearchSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const keyword = searchKeyword.trim();
+    setIsSearchOpen(false);
+
+    if (!keyword) {
+      router.push("/san-pham");
+      return;
+    }
+
+    const params = new URLSearchParams();
+    params.set("q", keyword);
+    router.push(`/san-pham?${params.toString()}`);
+  }
+
   return (
     <header
       ref={navRef}
       className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
     >
       <div className="container mx-auto flex h-20 items-center justify-between gap-8 px-4">
-        <Link href="/" className="flex shrink-0 items-center gap-3">
+        <Link href="/san-pham" className="flex shrink-0 items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center bg-white p-1">
             <Image
               src="/logo.png"
@@ -133,6 +149,9 @@ const Navbar = () => {
         </Link>
 
         <nav className="hidden items-center gap-8 text-sm font-semibold lg:flex">
+          <Link href="https://ahso.vn" className="transition-colors hover:text-primary">
+            Trang chủ
+          </Link>
           <Link href="/san-pham" className="transition-colors hover:text-primary">
             Sản phẩm
           </Link>
@@ -142,17 +161,14 @@ const Navbar = () => {
           <Link href="/datasheet" className="transition-colors hover:text-primary">
             Datasheet
           </Link>
-          <Link href="/contact" className="transition-colors hover:text-primary">
-            Liên hệ
-          </Link>
         </nav>
 
         <div ref={searchBoxRef} className="relative hidden max-w-xl flex-1 md:block">
-          <div className="relative flex items-center">
+          <form className="relative flex items-center" onSubmit={handleSearchSubmit}>
             <input
               type="text"
               placeholder="Tìm mã SKU, thông số kỹ thuật..."
-              className="h-10 w-full border border-border bg-muted px-10 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+              className="h-10 w-full border border-border bg-muted px-10 pr-20 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
               onChange={(event) => {
                 const value = event.target.value;
                 setSearchKeyword(value);
@@ -184,11 +200,14 @@ const Navbar = () => {
                 <line x1="21" y1="21" x2="16.65" y2="16.65" />
               </svg>
             </div>
-            <div className="pointer-events-none absolute right-3 flex items-center gap-1 border border-border bg-background px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
-              <span>CTRL</span>
-              <span>K</span>
-            </div>
-          </div>
+            <button
+              type="submit"
+              className="absolute right-1 inline-flex h-8 items-center justify-center border border-border bg-background px-3 text-xs font-semibold transition-colors hover:border-primary hover:text-primary"
+            >
+              Tìm
+            </button>
+          </form>
+
           {isSearchOpen ? (
             <div className="absolute top-[calc(100%+8px)] left-0 right-0 z-50 border border-border bg-background">
               {isSearchLoading ? (

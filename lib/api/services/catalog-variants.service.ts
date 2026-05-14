@@ -4,6 +4,7 @@ import type { CategoryTreeNode } from "@/lib/category/types";
 import type {
   CatalogFeaturedBrand,
   CatalogFeaturedProduct,
+  CatalogProductFilterOption,
   CatalogVariant,
   CatalogVariantSearchResponse,
 } from "@/lib/catalog/types";
@@ -18,6 +19,7 @@ type CatalogVariantQuery = {
 
 type CatalogVariantSearchQuery = {
   q?: string;
+  productId?: string;
   categoryId?: string;
   brandId?: string;
   priceMin?: number;
@@ -73,6 +75,16 @@ export function listCatalogNewestProducts() {
 
 export function listCatalogFeaturedBrands() {
   return apiRequest<CatalogFeaturedBrand[]>("/catalog/brands/featured", {
+    method: "GET",
+  });
+}
+
+type CatalogProductsResponse =
+  | CatalogProductFilterOption[]
+  | { items: CatalogProductFilterOption[] };
+
+export function listCatalogProducts() {
+  return apiRequest<CatalogProductsResponse>("/catalog/products", {
     method: "GET",
   });
 }

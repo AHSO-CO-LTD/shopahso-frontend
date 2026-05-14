@@ -32,7 +32,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="vi" className={`${fontSans.variable} ${fontMono.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col font-sans selection:bg-primary selection:text-white">
+      <body className="min-h-[100dvh] flex flex-col font-sans selection:bg-primary selection:text-white">
         <AuthProvider>
           <AppChrome>{children}</AppChrome>
           <Toaster position="top-right" richColors />
