@@ -1,5 +1,5 @@
-import StaffWorkspace from "@/components/staff/StaffWorkspace";
+import { redirect } from "next/navigation";
 
 export default function StaffPage() {
-  return <StaffWorkspace />;
+  redirect("/nhan-vien/nguoi-dung");
 }
