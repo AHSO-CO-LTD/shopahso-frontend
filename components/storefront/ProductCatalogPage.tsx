@@ -67,7 +67,6 @@ export default function ProductCatalogPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [reloadTick, setReloadTick] = useState(0);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -200,17 +199,6 @@ export default function ProductCatalogPage() {
   }, []);
 
   useEffect(() => {
-    function handlePageShow(event: PageTransitionEvent) {
-      if (event.persisted) {
-        setReloadTick((currentTick) => currentTick + 1);
-      }
-    }
-
-    window.addEventListener("pageshow", handlePageShow);
-    return () => window.removeEventListener("pageshow", handlePageShow);
-  }, []);
-
-  useEffect(() => {
     async function loadInitialFilters() {
       const [brandsResult, categoriesResult] = await Promise.allSettled([
         listCatalogBrands(),
@@ -231,7 +219,7 @@ export default function ProductCatalogPage() {
     }
 
     void loadInitialFilters();
-  }, [reloadTick]);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -271,7 +259,7 @@ export default function ProductCatalogPage() {
     return () => {
       cancelled = true;
     };
-  }, [reloadTick]);
+  }, []);
 
   useEffect(() => {
     if (selectedProductSlug || !legacyProductId || products.length === 0) {
@@ -323,7 +311,7 @@ export default function ProductCatalogPage() {
     }
 
     void loadVariants();
-  }, [keyword, selectedProductId, sort, page, limit, priceMax, priceMin, selectedBrandId, selectedCategoryId, reloadTick]);
+  }, [keyword, selectedProductId, sort, page, limit, priceMax, priceMin, selectedBrandId, selectedCategoryId]);
 
   const startItem = total === 0 ? 0 : (page - 1) * limit + 1;
   const endItem = Math.min(page * limit, total);
