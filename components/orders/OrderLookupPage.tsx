@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
@@ -6,6 +6,11 @@ import { useEffect, useState, type FormEvent } from "react";
 import { CheckCircle2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { formatCartMoney } from "@/components/cart/cart-format";
+import {
+  getFulfillmentStatusLabel,
+  getOrderStatusLabel,
+  getPaymentStatusLabel,
+} from "@/components/orders/order-display";
 import { Button } from "@/components/ui/button";
 import { confirmPublicOrderPayment, lookupPublicOrder } from "@/lib/api/services/checkout.service";
 import type { CheckoutOrder } from "@/lib/checkout/types";
@@ -20,7 +25,7 @@ export function OrderLookupPage() {
 
   async function lookup() {
     if (!orderCode.trim() || !email.trim()) {
-      toast.warning("Vui lòng nhập mã đơn và email.");
+      toast.warning("Vui lÃ²ng nháº­p mÃ£ Ä‘Æ¡n vÃ  email.");
       return;
     }
 
@@ -28,10 +33,10 @@ export function OrderLookupPage() {
     try {
       const response = await lookupPublicOrder({ orderCode: orderCode.trim(), email: email.trim() });
       setOrder(response);
-      toast.success("Đã tải thông tin đơn hàng.");
+      toast.success("ÄÃ£ táº£i thÃ´ng tin Ä‘Æ¡n hÃ ng.");
     } catch (error) {
       setOrder(null);
-      toast.error(error instanceof Error ? error.message : "Không thể tra cứu đơn hàng.");
+      toast.error(error instanceof Error ? error.message : "KhÃ´ng thá»ƒ tra cá»©u Ä‘Æ¡n hÃ ng.");
     } finally {
       setIsLoading(false);
     }
@@ -59,13 +64,13 @@ export function OrderLookupPage() {
     }
 
     setIsConfirming(true);
-    const loadingToastId = toast.loading("Đang xác nhận đã chuyển khoản...");
+    const loadingToastId = toast.loading("Äang xÃ¡c nháº­n Ä‘Ã£ chuyá»ƒn khoáº£n...");
     try {
       const response = await confirmPublicOrderPayment({ orderCode: order.orderCode, email: order.customerEmail });
       setOrder(response);
-      toast.success("Đã gửi xác nhận thanh toán.", { id: loadingToastId });
+      toast.success("ÄÃ£ gá»­i xÃ¡c nháº­n thanh toÃ¡n.", { id: loadingToastId });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Không thể xác nhận thanh toán.", { id: loadingToastId });
+      toast.error(error instanceof Error ? error.message : "KhÃ´ng thá»ƒ xÃ¡c nháº­n thanh toÃ¡n.", { id: loadingToastId });
     } finally {
       setIsConfirming(false);
     }
@@ -75,12 +80,12 @@ export function OrderLookupPage() {
     <div className="grid gap-6 lg:grid-cols-[420px_minmax(0,1fr)]">
       <form className="h-fit space-y-4 border border-border bg-background p-4" onSubmit={handleSubmit}>
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Tra cứu công khai</p>
-          <h1 className="mt-2 text-2xl font-black tracking-tight">Tra cứu đơn hàng</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Dùng mã đơn và email nhận thông tin đơn hàng.</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Tra cá»©u cÃ´ng khai</p>
+          <h1 className="mt-2 text-2xl font-black tracking-tight">Tra cá»©u Ä‘Æ¡n hÃ ng</h1>
+          <p className="mt-2 text-sm text-muted-foreground">DÃ¹ng mÃ£ Ä‘Æ¡n vÃ  email nháº­n thÃ´ng tin Ä‘Æ¡n hÃ ng.</p>
         </div>
         <label className="grid gap-2 text-sm">
-          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Mã đơn</span>
+          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">MÃ£ Ä‘Æ¡n</span>
           <input
             className="h-11 border border-border bg-background px-3 font-mono outline-none focus:border-primary"
             value={orderCode}
@@ -98,7 +103,7 @@ export function OrderLookupPage() {
         </label>
         <Button className="h-11 w-full text-sm font-semibold" disabled={isLoading} type="submit">
           <Search className="size-4" />
-          Tra cứu
+          Tra cá»©u
         </Button>
       </form>
 
@@ -106,14 +111,14 @@ export function OrderLookupPage() {
         {order ? (
           <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_280px]">
             <div>
-              <h2 className="text-xl font-black tracking-tight">Đơn {order.orderCode}</h2>
+              <h2 className="text-xl font-black tracking-tight">ÄÆ¡n {order.orderCode}</h2>
               <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
                 <Info label="Email" value={order.customerEmail} />
-                <Info label="Tổng tiền" value={formatCartMoney(order.grandTotalAmount)} strong />
-                <Info label="Trạng thái đơn" value={order.status} />
-                <Info label="Thanh toán" value={order.paymentStatus} />
-                <Info label="Giao hàng" value={order.fulfillmentStatus} />
-                <Info label="Nội dung CK" value={order.paymentTransferContent ?? ""} mono />
+                <Info label="Tá»•ng tiá»n" value={formatCartMoney(order.grandTotalAmount)} strong />
+                <Info label="Trạng thái đơn" value={getOrderStatusLabel(order.status)} />
+                <Info label="Thanh toán" value={getPaymentStatusLabel(order.paymentStatus)} />
+                <Info label="Giao hàng" value={getFulfillmentStatusLabel(order.fulfillmentStatus)} />
+                <Info label="Ná»™i dung CK" value={order.paymentTransferContent ?? ""} mono />
               </dl>
               <Button
                 className="mt-5 h-10 px-4 text-sm font-semibold"
@@ -123,12 +128,12 @@ export function OrderLookupPage() {
                 variant="outline"
               >
                 <CheckCircle2 className="size-4" />
-                Tôi đã chuyển khoản
+                TÃ´i Ä‘Ã£ chuyá»ƒn khoáº£n
               </Button>
             </div>
             {order.paymentQrUrl ? (
               <Image
-                alt={`QR thanh toán đơn ${order.orderCode}`}
+                alt={`QR thanh toÃ¡n Ä‘Æ¡n ${order.orderCode}`}
                 className="h-auto w-full border border-border"
                 height={280}
                 src={order.paymentQrUrl}
@@ -138,7 +143,7 @@ export function OrderLookupPage() {
           </div>
         ) : (
           <div className="flex min-h-72 items-center justify-center text-center text-sm text-muted-foreground">
-            Nhập mã đơn và email để xem thông tin đơn hàng.
+            Nháº­p mÃ£ Ä‘Æ¡n vÃ  email Ä‘á»ƒ xem thÃ´ng tin Ä‘Æ¡n hÃ ng.
           </div>
         )}
       </section>
@@ -151,7 +156,7 @@ function Info({ label, value, mono = false, strong = false }: { label: string; v
     <div>
       <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">{label}</dt>
       <dd className={`mt-1 break-words ${mono ? "font-mono" : ""} ${strong ? "font-black text-primary" : "font-semibold"}`}>
-        {value || "Chưa có dữ liệu"}
+        {value || "ChÆ°a cÃ³ dá»¯ liá»‡u"}
       </dd>
     </div>
   );

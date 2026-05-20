@@ -75,12 +75,27 @@ export type CreateCheckoutOrderPayload = {
 export type CheckoutOrderItem = {
   id: string;
   productId?: string;
+  productSlug?: string;
+  productSlugSnapshot?: string;
   variantId?: string;
+  variantSlug?: string;
+  variantSlugSnapshot?: string;
+  slug?: string;
   quantity?: number;
   productName?: string;
+  productNameSnapshot?: string;
   variantName?: string;
+  variantNameSnapshot?: string;
   sku?: string;
+  skuSnapshot?: string;
+  imageUrlSnapshot?: string | null;
+  unitSnapshot?: string | null;
+  priceSnapshot?: string;
+  salePriceSnapshot?: string | null;
+  effectivePriceSnapshot?: string;
+  taxAmount?: string;
   subtotalAmount?: string;
+  totalAmount?: string;
 };
 
 export type CheckoutOrder = {

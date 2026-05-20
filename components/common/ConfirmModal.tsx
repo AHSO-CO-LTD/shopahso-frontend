@@ -10,6 +10,7 @@ type ConfirmModalProps = {
   description: string;
   confirmText?: string;
   cancelText?: string;
+  confirmVariant?: "default" | "destructive";
   isLoading?: boolean;
   onCancel: () => void;
   onConfirm: () => void | Promise<void>;
@@ -21,6 +22,7 @@ export default function ConfirmModal({
   description,
   confirmText = "Xác nhận",
   cancelText = "Hủy",
+  confirmVariant = "destructive",
   isLoading = false,
   onCancel,
   onConfirm,
@@ -70,7 +72,7 @@ export default function ConfirmModal({
             disabled={isLoading}
             onClick={() => void onConfirm()}
             type="button"
-            variant="destructive"
+            variant={confirmVariant}
           >
             {isLoading ? "Đang xử lý..." : confirmText}
           </Button>

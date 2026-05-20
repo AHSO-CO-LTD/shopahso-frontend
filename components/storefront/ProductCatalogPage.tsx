@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
@@ -67,6 +67,7 @@ export default function ProductCatalogPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -315,35 +316,60 @@ export default function ProductCatalogPage() {
 
   const startItem = total === 0 ? 0 : (page - 1) * limit + 1;
   const endItem = Math.min(page * limit, total);
+  const activeFilterCount = [
+    keyword.trim(),
+    selectedCategorySlug,
+    selectedProductSlugValue,
+    selectedBrandSlug,
+    priceMin,
+    priceMax,
+  ].filter(Boolean).length;
 
   return (
     <main className="border-t border-border bg-background">
-      <section className="container mx-auto px-4 py-10 lg:py-12">
+      <section className="container mx-auto px-4 py-6 sm:py-8 lg:py-12">
         <div ref={catalogTopRef} />
 
-        <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
-          <div>
+        <header className="mb-5 flex flex-wrap items-end justify-between gap-3 sm:mb-8 sm:gap-4">
+          <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               Danh mục sản phẩm
             </p>
-            <h1 className="mt-2 text-3xl font-black tracking-tight lg:text-4xl">Sản phẩm công nghiệp</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
+            <h1 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl lg:text-4xl">Sản phẩm công nghiệp</h1>
+            <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
               Tìm theo tên, SKU, thương hiệu, danh mục và khoảng giá.
             </p>
           </div>
-          <p className="text-sm font-semibold text-muted-foreground">
+          <p className="w-full border border-border bg-muted/10 px-3 py-2 text-sm font-semibold text-muted-foreground sm:w-auto sm:border-0 sm:bg-transparent sm:px-0 sm:py-0">
             {total === 0 ? "Không có kết quả" : `Hiển thị ${startItem}-${endItem} / ${total}`}
           </p>
         </header>
 
-        <section className="mb-6 grid gap-4 lg:grid-cols-3">
+        <div className="mb-4 flex items-center justify-between gap-3 lg:hidden">
+          <button
+            type="button"
+            className="inline-flex h-10 flex-1 cursor-pointer items-center justify-center border border-border px-3 text-sm font-semibold transition-colors hover:border-primary hover:text-primary"
+            onClick={() => setIsFilterPanelOpen((currentState) => !currentState)}
+          >
+            {isFilterPanelOpen ? "Ẩn bộ lọc" : "Hiện bộ lọc"}
+            {activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+          </button>
+          <button
+            type="button"
+            onClick={resetAllFilters}
+            className="inline-flex h-10 cursor-pointer items-center justify-center border border-border px-3 text-sm font-semibold transition-colors hover:border-primary hover:text-primary"
+          >
+            Xóa
+          </button>
+        </div>
+        <section className={`${isFilterPanelOpen ? "grid" : "hidden"} mb-6 gap-4 lg:grid lg:grid-cols-3`}>
           <div className="border border-border bg-background p-4 lg:col-span-2">
             <p className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Bộ lọc</p>
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-              <label className="grid gap-2 text-sm xl:col-span-5">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+              <label className="grid gap-2 text-sm sm:col-span-2 xl:col-span-5">
                 <span className="font-semibold">Từ khóa</span>
                 <input
-                  className="h-10 border border-border px-3 outline-none focus:border-primary"
+                  className="h-11 border border-border px-3 outline-none focus:border-primary sm:h-10"
                   defaultValue={keyword}
                   ref={keywordInputRef}
                   onChange={(event) => handleKeywordChange(event.target.value)}
@@ -355,7 +381,7 @@ export default function ProductCatalogPage() {
               <label className="grid gap-2 text-sm">
                 <span className="font-semibold">Sắp xếp</span>
                 <select
-                  className="h-10 cursor-pointer border border-border bg-background px-3 outline-none focus:border-primary"
+                  className="h-11 cursor-pointer border border-border bg-background px-3 outline-none focus:border-primary sm:h-10"
                   onChange={(event) => updateQuery({ sort: event.target.value as SortOption }, { resetPage: true })}
                   value={sort}
                 >
@@ -370,7 +396,7 @@ export default function ProductCatalogPage() {
               <label className="grid gap-2 text-sm">
                 <span className="font-semibold">Danh mục</span>
                 <select
-                  className="h-10 cursor-pointer border border-border bg-background px-3 outline-none focus:border-primary"
+                  className="h-11 cursor-pointer border border-border bg-background px-3 outline-none focus:border-primary sm:h-10"
                   onChange={(event) => updateQuery({ categorySlug: event.target.value }, { resetPage: true })}
                   value={selectedCategorySlug}
                 >
@@ -386,7 +412,7 @@ export default function ProductCatalogPage() {
               <label className="grid gap-2 text-sm">
                 <span className="font-semibold">Sản phẩm</span>
                 <select
-                  className="h-10 cursor-pointer border border-border bg-background px-3 outline-none focus:border-primary"
+                  className="h-11 cursor-pointer border border-border bg-background px-3 outline-none focus:border-primary sm:h-10"
                   onChange={(event) =>
                     updateQuery(
                       {
@@ -410,7 +436,7 @@ export default function ProductCatalogPage() {
               <label className="grid gap-2 text-sm">
                 <span className="font-semibold">Thương hiệu</span>
                 <select
-                  className="h-10 cursor-pointer border border-border bg-background px-3 outline-none focus:border-primary"
+                  className="h-11 cursor-pointer border border-border bg-background px-3 outline-none focus:border-primary sm:h-10"
                   onChange={(event) => updateQuery({ brandSlug: event.target.value }, { resetPage: true })}
                   value={selectedBrandSlug}
                 >
@@ -427,7 +453,7 @@ export default function ProductCatalogPage() {
                 <button
                   type="button"
                   onClick={resetAllFilters}
-                  className="inline-flex h-10 w-full cursor-pointer items-center justify-center border border-border px-3 text-sm font-semibold transition-colors hover:border-primary hover:text-primary"
+                  className="inline-flex h-11 w-full cursor-pointer items-center justify-center border border-border px-3 text-sm font-semibold transition-colors hover:border-primary hover:text-primary sm:h-10"
                 >
                   Xóa bộ lọc
                 </button>
@@ -437,11 +463,11 @@ export default function ProductCatalogPage() {
 
           <div className="border border-border bg-background p-4">
             <p className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Khoảng giá</p>
-            <div className="grid gap-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
               <label className="grid gap-2 text-sm">
                 <span className="font-semibold">Giá thấp nhất</span>
                 <input
-                  className="input-no-spin h-10 border border-border px-3 outline-none focus:border-primary"
+                  className="input-no-spin h-11 border border-border px-3 outline-none focus:border-primary sm:h-10"
                   min={0}
                   onWheel={(event) => event.currentTarget.blur()}
                   onChange={(event) => updateQuery({ priceMin: event.target.value }, { resetPage: true })}
@@ -454,7 +480,7 @@ export default function ProductCatalogPage() {
               <label className="grid gap-2 text-sm">
                 <span className="font-semibold">Giá cao nhất</span>
                 <input
-                  className="input-no-spin h-10 border border-border px-3 outline-none focus:border-primary"
+                  className="input-no-spin h-11 border border-border px-3 outline-none focus:border-primary sm:h-10"
                   min={0}
                   onWheel={(event) => event.currentTarget.blur()}
                   onChange={(event) => updateQuery({ priceMax: event.target.value }, { resetPage: true })}
@@ -487,7 +513,7 @@ export default function ProductCatalogPage() {
           </div>
         ) : (
           <>
-            <div className="grid min-h-[24rem] content-start grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid min-h-[24rem] content-start grid-cols-1 gap-3 min-[520px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {variants.map((variant) => (
                 <article key={variant.id} className="flex flex-col border border-border bg-background">
                   <div className="border-b border-border bg-muted/15">
@@ -525,7 +551,7 @@ export default function ProductCatalogPage() {
                     <ButtonLink href={`/san-pham/${variant.slug}`} label="Chi tiết" />
                     <AddToCartButton
                       active={variant.active}
-                      className="h-9 w-full"
+                      className="h-10 w-full sm:h-9"
                       label="Thêm"
                       stockQuantity={variant.stockQuantity}
                       variantId={variant.id}
@@ -589,7 +615,7 @@ function ButtonLink({ href, label }: { href: string; label: string }) {
   return (
     <Link
       href={href}
-      className="inline-flex h-9 w-full cursor-pointer items-center justify-center border border-border px-3 text-sm font-semibold transition-colors hover:border-primary hover:text-primary"
+      className="inline-flex h-10 w-full cursor-pointer items-center justify-center border border-border px-3 text-sm font-semibold transition-colors hover:border-primary hover:text-primary sm:h-9"
     >
       {label}
     </Link>
@@ -615,7 +641,7 @@ function CatalogPrice({ variant }: { variant: CatalogVariant }) {
 
 function CatalogSkeleton() {
   return (
-    <div className="grid min-h-[24rem] content-start grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="grid min-h-[24rem] content-start grid-cols-1 gap-3 min-[520px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {Array.from({ length: 8 }).map((_, index) => (
         <article key={`catalog-skeleton-${index}`} className="flex flex-col border border-border bg-background">
           <Skeleton className="aspect-[4/3] w-full" />

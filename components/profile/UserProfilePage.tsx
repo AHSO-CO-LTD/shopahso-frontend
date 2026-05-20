@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import { gsap } from "gsap";
 import { Check, Edit3, MapPin, Plus, Star, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import ConfirmModal from "@/components/common/ConfirmModal";
 import {
   createUserAddress,
   deleteUserAddress,
@@ -13,8 +16,10 @@ import {
   updateUserAddress,
 } from "@/lib/api/services/user-addresses.service";
 import { getWardsByProvinceCode, provinceOptions } from "@/lib/address/vietnam-locations";
+import type { AuthProfile } from "@/lib/auth/types";
 import type { UserAddress } from "@/lib/user-address/types";
 import { useAuth } from "@/components/providers/AuthProvider";
+import { cn } from "@/lib/utils";
 
 type AddressFormValue = {
   label: string;
@@ -70,6 +75,8 @@ export default function UserProfilePage() {
   const [openLocationSelect, setOpenLocationSelect] = useState<LocationSelectId>(null);
   const [provinceSearch, setProvinceSearch] = useState("");
   const [wardSearch, setWardSearch] = useState("");
+  const [deletingAddress, setDeletingAddress] = useState<UserAddress | null>(null);
+  const [isSaveConfirmOpen, setIsSaveConfirmOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoadingAddresses, setIsLoadingAddresses] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -153,21 +160,57 @@ export default function UserProfilePage() {
     scrollToAddressForm();
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
+  function handleOpenCreateAddress() {
     if (isLimitReached) {
       toast.warning("Bạn chỉ có thể lưu tối đa 5 địa chỉ.");
       return;
     }
 
+    resetForm();
+    setProvinceSearch("");
+    setWardSearch("");
+    setOpenLocationSelect(null);
+    setIsAddressFormOpen(true);
+    scrollToAddressForm();
+  }
+
+  function validateAddressForm() {
+    if (isLimitReached) {
+      toast.warning("Bạn chỉ có thể lưu tối đa 5 địa chỉ.");
+      return false;
+    }
+
     if (!selectedProvince || !selectedWard) {
       toast.warning("Vui lòng chọn tỉnh/thành phố và phường/xã.");
-      return;
+      return false;
     }
 
     if (!formValue.label.trim() || !formValue.name.trim() || !formValue.streetAddress.trim()) {
       toast.warning("Vui lòng nhập nhãn, người nhận và địa chỉ cụ thể.");
+      return false;
+    }
+
+    return true;
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!validateAddressForm()) {
+      return;
+    }
+
+    setIsSaveConfirmOpen(true);
+  }
+
+  async function handleConfirmSaveAddress() {
+    if (!validateAddressForm()) {
+      setIsSaveConfirmOpen(false);
+      return;
+    }
+
+    if (!selectedProvince || !selectedWard) {
+      setIsSaveConfirmOpen(false);
       return;
     }
 
@@ -196,6 +239,7 @@ export default function UserProfilePage() {
       toast.success(editingAddressId ? "Đã cập nhật địa chỉ." : "Đã thêm địa chỉ.", {
         id: loadingToastId,
       });
+      setIsSaveConfirmOpen(false);
       resetForm();
       await loadAddresses();
     } catch (error) {
@@ -234,6 +278,7 @@ export default function UserProfilePage() {
       if (editingAddressId === addressId) {
         resetForm();
       }
+      setDeletingAddress(null);
       await loadAddresses();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Không thể xóa địa chỉ.", {
@@ -245,170 +290,28 @@ export default function UserProfilePage() {
   }
 
   if (isInitializing || !profile) {
-    return (
-      <main className="border-t border-border bg-background">
-        <section className="container mx-auto px-4 py-10 lg:py-12">
-          <div className="border border-border p-8 text-sm text-muted-foreground">Đang tải hồ sơ...</div>
-        </section>
-      </main>
-    );
+    return <LoadingProfileView />;
   }
 
   return (
     <main className="border-t border-border bg-background">
-      <section className="container mx-auto px-4 py-10 lg:py-12">
-        <header className="mb-8">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-            Tài khoản người dùng
-          </p>
-          <h1 className="mt-2 text-3xl font-black tracking-tight lg:text-4xl">Hồ sơ của tôi</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Quản lý thông tin tài khoản và địa chỉ giao hàng dùng cho checkout.
-          </p>
-        </header>
+      <section className="container mx-auto px-3 py-4 sm:px-4 sm:py-8 lg:py-12">
+        <ProfilePageHeader />
 
-        <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-          <aside className="h-fit border border-border bg-muted/15 p-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Thông tin</p>
-            <h2 className="mt-2 text-xl font-black tracking-tight">{profile.fullName}</h2>
-            <dl className="mt-5 grid gap-3 text-sm">
-              <div>
-                <dt className="text-muted-foreground">Email</dt>
-                <dd className="font-semibold">{profile.email}</dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground">Số điện thoại</dt>
-                <dd className="font-semibold">{profile.phoneNumber ?? "Chưa cập nhật"}</dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground">Vai trò</dt>
-                <dd className="font-semibold">{profile.role}</dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground">Ngày tạo</dt>
-                <dd className="font-semibold">{new Date(profile.createdAt).toLocaleDateString("vi-VN")}</dd>
-              </div>
-            </dl>
-          </aside>
-
-          <div className="grid gap-6">
-            <section className="border border-border bg-background">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3 md:px-5">
-                <div>
-                  <h2 className="text-base font-black tracking-tight">Địa chỉ giao hàng</h2>
-                  <p className="mt-1 text-xs text-muted-foreground">{addresses.length}/5 địa chỉ đã lưu.</p>
-                </div>
-                <button
-                  type="button"
-                  className="inline-flex h-9 items-center gap-2 border border-border px-3 text-xs font-semibold transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
-                  disabled={isLimitReached}
-                  onClick={() => {
-                    if (isLimitReached) {
-                      toast.warning("Bạn chỉ có thể lưu tối đa 5 địa chỉ.");
-                      return;
-                    }
-                    resetForm();
-                    setProvinceSearch("");
-                    setWardSearch("");
-                    setOpenLocationSelect(null);
-                    setIsAddressFormOpen(true);
-                    scrollToAddressForm();
-                  }}
-                >
-                  <Plus className="size-4" />
-                  Thêm địa chỉ
-                </button>
-              </div>
-
-              {isLoadingAddresses ? (
-                <div className="p-5 text-sm text-muted-foreground">Đang tải địa chỉ...</div>
-              ) : errorMessage ? (
-                <div className="p-5 text-sm text-destructive">{errorMessage}</div>
-              ) : addresses.length === 0 ? (
-                <div className="grid min-h-64 place-items-center p-6 text-center">
-                  <div>
-                    <MapPin className="mx-auto size-10 text-muted-foreground" />
-                    <h3 className="mt-4 text-xl font-black tracking-tight">Chưa có địa chỉ giao hàng</h3>
-                    <p className="mt-2 max-w-md text-sm text-muted-foreground">
-                      Thêm địa chỉ đầu tiên để hệ thống chọn sẵn khi bạn vào checkout.
-                    </p>
-                    <button
-                      type="button"
-                      className="mt-5 inline-flex h-12 items-center justify-center gap-2 border border-primary bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-                      onClick={() => {
-                        resetForm();
-                        setProvinceSearch("");
-                        setWardSearch("");
-                        setOpenLocationSelect(null);
-                        setIsAddressFormOpen(true);
-                        scrollToAddressForm();
-                      }}
-                    >
-                      <Plus className="size-4" />
-                      Thêm địa chỉ
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="grid gap-3 p-4 md:p-5">
-                  {addresses.map((address) => (
-                    <article key={address.id} className="border border-border bg-background p-4">
-                      <div className="flex flex-wrap items-start justify-between gap-4">
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="font-black tracking-tight">{address.label}</h3>
-                            {address.status ? (
-                              <span className="inline-flex items-center gap-1 border border-primary bg-primary px-2 py-1 text-[11px] font-semibold text-primary-foreground">
-                                <Star className="size-3" />
-                                Mặc định
-                              </span>
-                            ) : null}
-                          </div>
-                          <p className="mt-2 text-sm font-semibold">{address.name}</p>
-                          <p className="text-sm text-muted-foreground">{address.phoneNumber || "Chưa có số điện thoại"}</p>
-                          <p className="mt-2 text-sm">
-                            {address.streetAddress}, {address.wardName}, {address.provinceName}
-                          </p>
-                          {address.note ? <p className="mt-1 text-xs text-muted-foreground">Ghi chú: {address.note}</p> : null}
-                        </div>
-
-                        <div className="flex flex-wrap gap-2">
-                          {!address.status ? (
-                            <button
-                              type="button"
-                              className="inline-flex size-9 items-center justify-center border border-border transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
-                              disabled={isSubmitting}
-                              onClick={() => void handleSetDefault(address.id)}
-                              aria-label="Đặt mặc định"
-                            >
-                              <Check className="size-4" />
-                            </button>
-                          ) : null}
-                          <button
-                            type="button"
-                            className="inline-flex size-9 items-center justify-center border border-border transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
-                            disabled={isSubmitting}
-                            onClick={() => startEdit(address)}
-                            aria-label="Sửa địa chỉ"
-                          >
-                            <Edit3 className="size-4" />
-                          </button>
-                          <button
-                            type="button"
-                            className="inline-flex size-9 items-center justify-center border border-border text-destructive transition-colors hover:border-destructive hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50"
-                            disabled={isSubmitting}
-                            onClick={() => void handleDelete(address.id)}
-                            aria-label="Xóa địa chỉ"
-                          >
-                            <Trash2 className="size-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              )}
-            </section>
+        <div className="grid gap-3 sm:gap-4 lg:gap-6 xl:grid-cols-[minmax(280px,340px)_minmax(0,1fr)]">
+          <UserInfoPanel profile={profile} />
+          <div className="grid gap-4 sm:gap-6">
+            <AddressBookSection
+              addresses={addresses}
+              errorMessage={errorMessage}
+              isLimitReached={isLimitReached}
+              isLoadingAddresses={isLoadingAddresses}
+              isSubmitting={isSubmitting}
+              onCreateAddress={handleOpenCreateAddress}
+              onEditAddress={startEdit}
+              onRequestDeleteAddress={setDeletingAddress}
+              onSetDefaultAddress={handleSetDefault}
+            />
 
             {isAddressFormOpen ? (
               <div ref={addressFormRef}>
@@ -433,7 +336,304 @@ export default function UserProfilePage() {
           </div>
         </div>
       </section>
+      <ConfirmModal
+        open={Boolean(deletingAddress)}
+        title="Xóa địa chỉ giao hàng?"
+        description={
+          deletingAddress
+            ? `Địa chỉ "${deletingAddress.label}" sẽ bị xóa khỏi hồ sơ của bạn. Hành động này không thể hoàn tác.`
+            : ""
+        }
+        confirmText="Xóa địa chỉ"
+        cancelText="Giữ lại"
+        isLoading={isSubmitting}
+        onCancel={() => setDeletingAddress(null)}
+        onConfirm={() => {
+          if (!deletingAddress) {
+            return;
+          }
+
+          void handleDelete(deletingAddress.id);
+        }}
+      />
+      <ConfirmModal
+        open={isSaveConfirmOpen}
+        title={editingAddressId ? "Lưu thay đổi địa chỉ?" : "Thêm địa chỉ mới?"}
+        description={
+          editingAddressId
+            ? "Hệ thống sẽ cập nhật địa chỉ giao hàng này trong hồ sơ của bạn."
+            : "Hệ thống sẽ lưu địa chỉ này để bạn có thể chọn nhanh khi checkout."
+        }
+        confirmText={editingAddressId ? "Lưu thay đổi" : "Thêm địa chỉ"}
+        cancelText="Kiểm tra lại"
+        confirmVariant="default"
+        isLoading={isSubmitting}
+        onCancel={() => setIsSaveConfirmOpen(false)}
+        onConfirm={() => void handleConfirmSaveAddress()}
+      />
     </main>
+  );
+}
+
+function LoadingProfileView() {
+  return (
+    <main className="border-t border-border bg-background">
+      <section className="container mx-auto px-3 py-4 sm:px-4 sm:py-8 lg:py-12">
+        <div className="mb-5 max-w-2xl sm:mb-8">
+          <Skeleton className="h-3 w-44" />
+          <Skeleton className="mt-2 h-7 w-48 sm:h-9 sm:w-56" />
+          <Skeleton className="mt-2 h-4 w-full max-w-xl" />
+        </div>
+        <div className="grid gap-3 sm:gap-4 lg:gap-6 xl:grid-cols-[minmax(280px,340px)_minmax(0,1fr)]">
+          <div className="border border-border bg-muted/15 p-3 sm:p-5">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="mt-3 h-6 w-48 sm:h-7" />
+            <div className="mt-4 grid grid-cols-2 gap-2 sm:mt-6 sm:gap-3">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <Skeleton key={index} className="h-9 w-full sm:h-10" />
+              ))}
+            </div>
+          </div>
+          <div className="border border-border bg-background p-3 sm:p-5">
+            <Skeleton className="h-5 w-40" />
+            <div className="mt-4 grid gap-2 sm:mt-5 sm:gap-3">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <Skeleton key={index} className="h-20 w-full sm:h-24" />
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function ProfilePageHeader() {
+  return (
+    <header className="mb-4 max-w-3xl sm:mb-8">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+        Tài khoản người dùng
+      </p>
+      <h1 className="mt-1 text-xl font-black tracking-tight sm:mt-2 sm:text-3xl lg:text-4xl">Hồ sơ của tôi</h1>
+      <p className="mt-1 hidden max-w-2xl text-sm leading-6 text-muted-foreground sm:block">
+        Quản lý thông tin tài khoản và địa chỉ giao hàng dùng cho checkout.
+      </p>
+    </header>
+  );
+}
+
+function UserInfoPanel({ profile }: { profile: AuthProfile }) {
+  const profileRows = [
+    { label: "Email", value: profile.email },
+    { label: "Số điện thoại", value: profile.phoneNumber ?? "Chưa cập nhật" },
+    { label: "Vai trò", value: profile.role },
+    { label: "Ngày tạo", value: new Date(profile.createdAt).toLocaleDateString("vi-VN") },
+  ];
+
+  return (
+    <aside className="h-fit border border-border bg-muted/15 p-3 sm:p-5 xl:sticky xl:top-24">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground sm:text-xs">Thông tin</p>
+          <h2 className="mt-1 break-words text-lg font-black tracking-tight sm:mt-2 sm:text-2xl xl:text-xl">{profile.fullName}</h2>
+        </div>
+      </div>
+      <dl className="mt-3 grid grid-cols-2 gap-2 text-xs sm:mt-5 sm:gap-3 sm:text-sm xl:grid-cols-1">
+        {profileRows.map((row) => (
+          <div
+            key={row.label}
+            className={cn(
+              "min-w-0 border border-border bg-background/60 p-2",
+              row.label === "Email" ? "col-span-2 xl:col-span-1" : "",
+            )}
+          >
+            <dt className="truncate text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground sm:text-xs sm:tracking-[0.12em]">
+              {row.label}
+            </dt>
+            <dd className="mt-1 break-words font-semibold leading-5">{row.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </aside>
+  );
+}
+
+function AddressBookSection({
+  addresses,
+  errorMessage,
+  isLimitReached,
+  isLoadingAddresses,
+  isSubmitting,
+  onCreateAddress,
+  onEditAddress,
+  onRequestDeleteAddress,
+  onSetDefaultAddress,
+}: {
+  addresses: UserAddress[];
+  errorMessage: string | null;
+  isLimitReached: boolean;
+  isLoadingAddresses: boolean;
+  isSubmitting: boolean;
+  onCreateAddress: () => void;
+  onEditAddress: (address: UserAddress) => void;
+  onRequestDeleteAddress: (address: UserAddress) => void;
+  onSetDefaultAddress: (addressId: string) => Promise<void>;
+}) {
+  return (
+    <section className="border border-border bg-background">
+      <div className="flex items-center justify-between gap-3 border-b border-border px-3 py-3 sm:px-5 sm:py-4">
+        <div className="min-w-0">
+          <h2 className="text-base font-black tracking-tight">Địa chỉ giao hàng</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground sm:mt-1">{addresses.length}/5 địa chỉ đã lưu.</p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-8 shrink-0 cursor-pointer rounded-none px-2 text-xs font-semibold sm:h-10 sm:px-3"
+          disabled={isLimitReached}
+          onClick={onCreateAddress}
+        >
+          <Plus className="size-4" />
+          <span className="hidden min-[390px]:inline">Thêm địa chỉ</span>
+          <span className="min-[390px]:hidden">Thêm</span>
+        </Button>
+      </div>
+
+      {isLoadingAddresses ? (
+        <AddressListSkeleton />
+      ) : errorMessage ? (
+        <div className="p-3 text-sm text-destructive sm:p-5">{errorMessage}</div>
+      ) : addresses.length === 0 ? (
+        <EmptyAddressState onCreateAddress={onCreateAddress} />
+      ) : (
+        <div className="grid gap-2 p-2 sm:gap-3 sm:p-5">
+          {addresses.map((address) => (
+            <AddressCard
+              key={address.id}
+              address={address}
+              isSubmitting={isSubmitting}
+              onEditAddress={onEditAddress}
+              onRequestDeleteAddress={onRequestDeleteAddress}
+              onSetDefaultAddress={onSetDefaultAddress}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function AddressListSkeleton() {
+  return (
+    <div className="grid gap-2 p-2 sm:gap-3 sm:p-5">
+      {Array.from({ length: 3 }).map((_, index) => (
+        <div key={index} className="border border-border p-3 sm:p-4">
+          <Skeleton className="h-5 w-32" />
+          <Skeleton className="mt-2 h-4 w-48" />
+          <Skeleton className="mt-2 h-4 w-full max-w-lg" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EmptyAddressState({ onCreateAddress }: { onCreateAddress: () => void }) {
+  return (
+    <div className="grid min-h-44 place-items-center p-4 text-center sm:min-h-64 sm:p-8">
+      <div className="max-w-md">
+        <MapPin className="mx-auto size-8 text-muted-foreground sm:size-10" />
+        <h3 className="mt-3 text-base font-black tracking-tight sm:mt-4 sm:text-xl">Chưa có địa chỉ giao hàng</h3>
+        <p className="mt-1.5 text-xs leading-5 text-muted-foreground sm:mt-2 sm:text-sm sm:leading-6">
+          Thêm địa chỉ đầu tiên để hệ thống chọn sẵn khi bạn vào checkout.
+        </p>
+        <Button
+          type="button"
+          className="mt-4 h-9 w-full cursor-pointer rounded-none px-4 text-xs font-semibold sm:mt-5 sm:h-11 sm:w-auto sm:px-5 sm:text-sm"
+          onClick={onCreateAddress}
+        >
+          <Plus className="size-4" />
+          Thêm địa chỉ
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function AddressCard({
+  address,
+  isSubmitting,
+  onEditAddress,
+  onRequestDeleteAddress,
+  onSetDefaultAddress,
+}: {
+  address: UserAddress;
+  isSubmitting: boolean;
+  onEditAddress: (address: UserAddress) => void;
+  onRequestDeleteAddress: (address: UserAddress) => void;
+  onSetDefaultAddress: (addressId: string) => Promise<void>;
+}) {
+  return (
+    <article className="border border-border bg-background p-3 transition-colors hover:border-primary/60 sm:p-4">
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <h3 className="min-w-0 truncate font-black tracking-tight">{address.label}</h3>
+            {address.status ? (
+              <span className="inline-flex shrink-0 items-center gap-1 border border-primary bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground sm:py-1 sm:text-[11px]">
+                <Star className="size-3" />
+                Mặc định
+              </span>
+            ) : null}
+          </div>
+          <p className="mt-1.5 break-words text-sm font-semibold">
+            {address.name}
+            <span className="font-normal text-muted-foreground"> · {address.phoneNumber || "Chưa có số điện thoại"}</span>
+          </p>
+          <p className="mt-1.5 break-words text-xs leading-5 sm:text-sm sm:leading-6">
+            {address.streetAddress}, {address.wardName}, {address.provinceName}
+          </p>
+          {address.note ? <p className="mt-1 line-clamp-2 break-words text-xs leading-5 text-muted-foreground">Ghi chú: {address.note}</p> : null}
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:justify-end">
+          {!address.status ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="h-8 w-full cursor-pointer rounded-none sm:w-8"
+              disabled={isSubmitting}
+              onClick={() => void onSetDefaultAddress(address.id)}
+              aria-label="Đặt mặc định"
+            >
+              <Check className="size-4" />
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className={cn("h-8 w-full cursor-pointer rounded-none sm:w-8", address.status ? "col-start-2" : "")}
+            disabled={isSubmitting}
+            onClick={() => onEditAddress(address)}
+            aria-label="Sửa địa chỉ"
+          >
+            <Edit3 className="size-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            size="icon"
+            className="h-8 w-full cursor-pointer rounded-none sm:w-8"
+            disabled={isSubmitting}
+            onClick={() => onRequestDeleteAddress(address)}
+            aria-label="Xóa địa chỉ"
+          >
+            <Trash2 className="size-4" />
+          </Button>
+        </div>
+      </div>
+    </article>
   );
 }
 
@@ -478,45 +678,48 @@ function AddressForm({
   );
 
   return (
-    <form className="border border-border bg-background p-4 md:p-5" onSubmit={onSubmit}>
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div>
+    <form className="border border-border bg-background p-3 sm:p-5" onSubmit={onSubmit}>
+      <div className="mb-4 grid gap-2 sm:mb-5 sm:flex sm:items-start sm:justify-between sm:gap-3">
+        <div className="min-w-0">
           <h2 className="text-base font-black tracking-tight">
             {editingAddressId ? "Cập nhật địa chỉ" : "Thêm địa chỉ"}
           </h2>
-          <p className="mt-1 text-xs text-muted-foreground">Chỉ lưu tỉnh/thành phố và phường/xã, không gửi district.</p>
+          <p className="mt-1 hidden text-xs leading-5 text-muted-foreground sm:block">Chỉ lưu tỉnh/thành phố và phường/xã, không gửi district.</p>
         </div>
         {editingAddressId ? (
-          <button
+          <Button
             type="button"
-            className="inline-flex size-9 items-center justify-center border border-border transition-colors hover:border-primary hover:text-primary"
+            variant="outline"
+            size="icon"
+            className="h-8 cursor-pointer rounded-none sm:h-9"
             onClick={onCancel}
             aria-label="Hủy chỉnh sửa"
           >
             <X className="size-4" />
-          </button>
+          </Button>
         ) : null}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <section className="border border-border bg-muted/10 p-4">
-          <h3 className="text-sm font-black tracking-tight">Thông tin người nhận</h3>
-          <div className="mt-4 grid gap-4">
+      <div className="grid gap-3 lg:grid-cols-2 lg:gap-4">
+        <fieldset className="min-w-0 border border-border bg-muted/10 p-3 sm:p-4">
+          <legend className="px-1 text-xs font-black tracking-tight sm:text-sm">Thông tin người nhận</legend>
+          <div className="mt-3 grid gap-3 min-[420px]:grid-cols-2 sm:mt-4 sm:gap-4">
             <TextField label="Nhãn địa chỉ" required value={formValue.label} onChange={(value) => onChange({ ...formValue, label: value })} placeholder="Nhà riêng, Công ty..." />
             <TextField label="Người nhận" required value={formValue.name} onChange={(value) => onChange({ ...formValue, name: value })} />
             <TextField label="Số điện thoại" value={formValue.phoneNumber} onChange={(value) => onChange({ ...formValue, phoneNumber: value })} />
             <TextField
+              className="col-span-2 sm:col-span-1"
               label="Ghi chú"
               value={formValue.note}
               onChange={(value) => onChange({ ...formValue, note: value })}
               placeholder="Giao giờ hành chính..."
             />
           </div>
-        </section>
+        </fieldset>
 
-        <section className="border border-border bg-muted/10 p-4">
-          <h3 className="text-sm font-black tracking-tight">Địa chỉ</h3>
-          <div className="mt-4 grid gap-4">
+        <fieldset className="min-w-0 border border-border bg-muted/10 p-3 sm:p-4">
+          <legend className="px-1 text-xs font-black tracking-tight sm:text-sm">Địa chỉ</legend>
+          <div className="mt-3 grid gap-3 min-[560px]:grid-cols-2 sm:mt-4 sm:gap-4">
             <SearchableLocationSelect
               label="Tỉnh/thành phố"
               isOpen={openLocationSelect === "province"}
@@ -556,6 +759,7 @@ function AddressForm({
             />
 
             <TextField
+              className="min-[560px]:col-span-2"
               label="Số nhà, tên đường"
               required
               value={formValue.streetAddress}
@@ -563,11 +767,12 @@ function AddressForm({
               placeholder="VD: 123 Nguyễn Huệ"
             />
           </div>
-        </section>
+        </fieldset>
       </div>
 
-      <label className="mt-4 flex items-center gap-3 border border-border p-3 text-sm">
+      <label className="mt-3 flex cursor-pointer items-center gap-2 border border-border p-2.5 text-sm transition-colors hover:border-primary/70 sm:mt-4 sm:gap-3 sm:p-3">
         <input
+          className="size-4 accent-primary"
           type="checkbox"
           checked={formValue.status}
           onChange={(event) => onChange({ ...formValue, status: event.target.checked })}
@@ -575,14 +780,14 @@ function AddressForm({
         <span className="font-semibold">Đặt làm địa chỉ mặc định</span>
       </label>
 
-      <button
+      <Button
         type="submit"
-        className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 border border-primary bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+        className="mt-4 h-10 w-full cursor-pointer rounded-none px-4 text-sm font-semibold sm:mt-5 sm:h-11 sm:w-auto sm:min-w-44"
         disabled={isSubmitting || isLimitReached}
       >
         <MapPin className="size-4" />
         {editingAddressId ? "Lưu thay đổi" : "Thêm địa chỉ"}
-      </button>
+      </Button>
     </form>
   );
 }
@@ -603,13 +808,13 @@ function TextField({
   value: string;
 }) {
   return (
-    <label className={`grid gap-2 text-sm ${className}`}>
-      <span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+    <label className={cn("grid min-w-0 gap-1.5 text-sm sm:gap-2", className)}>
+      <span className="truncate text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground sm:text-xs sm:tracking-[0.12em]">
         {label}
         {required ? " *" : ""}
       </span>
       <input
-        className="h-11 border border-border bg-background px-3 outline-none focus:border-primary"
+        className="h-10 min-w-0 border border-border bg-background px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary focus:ring-2 focus:ring-primary/15 sm:h-11"
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         required={required}
@@ -667,34 +872,35 @@ function SearchableLocationSelect({
   const selectedOption = allOptions.find((option) => option.code === selectedCode);
 
   return (
-    <div className="relative grid gap-2 text-sm">
-      <span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+    <div className="relative grid min-w-0 gap-1.5 text-sm sm:gap-2">
+      <span className="truncate text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground sm:text-xs sm:tracking-[0.12em]">
         {label}
         {required ? " *" : ""}
       </span>
-      <button
+      <Button
         type="button"
-        className="flex h-11 w-full items-center justify-between gap-3 border border-border bg-background px-3 text-left outline-none transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+        variant="outline"
+        className="h-10 min-w-0 overflow-hidden w-full cursor-pointer justify-between gap-2 rounded-none px-3 text-left text-sm font-normal hover:border-primary sm:h-11 sm:gap-3"
         disabled={disabled}
         onClick={() => onOpenChange(!isOpen)}
       >
-        <span className={selectedOption ? "font-semibold" : "text-muted-foreground"}>
+        <span className={cn("min-w-0 truncate", selectedOption ? "font-semibold" : "text-muted-foreground")}>
           {selectedOption?.name ?? `Chọn ${label.toLowerCase()}`}
         </span>
-        <span className="font-mono text-[11px] text-muted-foreground">{selectedOption?.code ?? ""}</span>
-      </button>
+        <span className="hidden shrink-0 font-mono text-[11px] text-muted-foreground min-[520px]:inline">{selectedOption?.code ?? ""}</span>
+      </Button>
 
       {isOpen ? (
         <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-40 border border-border bg-background">
           <input
-            className="h-11 w-full border-b border-border bg-background px-3 outline-none focus:bg-muted/20"
+            className="h-10 w-full border-b border-border bg-background px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus:bg-muted/20 focus:ring-2 focus:ring-primary/15 sm:h-11"
             autoFocus
             onChange={(event) => onSearchChange(event.target.value)}
             placeholder={placeholder}
             type="text"
             value={searchValue}
           />
-          <div className="max-h-56 overflow-y-auto">
+          <div className="max-h-48 overflow-y-auto sm:max-h-56">
             {options.length === 0 ? (
               <p className="px-3 py-3 text-xs text-muted-foreground">Không có kết quả phù hợp.</p>
             ) : (
@@ -703,13 +909,13 @@ function SearchableLocationSelect({
                   key={option.code}
                   type="button"
                   className={[
-                    "flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition-colors hover:bg-muted",
+                    "flex w-full cursor-pointer items-center justify-between gap-3 px-3 py-1.5 text-left text-sm transition-colors hover:bg-muted sm:py-2",
                     selectedCode === option.code ? "bg-muted font-semibold text-primary" : "",
                   ].join(" ")}
                   onClick={() => onSelect(option)}
                 >
-                  <span>{option.name}</span>
-                  <span className="font-mono text-[11px] text-muted-foreground">{option.code}</span>
+                  <span className="min-w-0 break-words">{option.name}</span>
+                  <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{option.code}</span>
                 </button>
               ))
             )}

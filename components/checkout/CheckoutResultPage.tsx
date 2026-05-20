@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { CheckCircle2 } from "lucide-react";
+import { getOrderStatusLabel, getPaymentStatusLabel } from "@/components/orders/order-display";
 import { Button } from "@/components/ui/button";
 import { getStoredCheckoutOrder } from "@/lib/checkout/storage";
 import type { CheckoutOrder } from "@/lib/checkout/types";
@@ -48,11 +49,11 @@ export function CheckoutResultPage() {
         </div>
         <div className="flex justify-between gap-3">
           <dt className="text-muted-foreground">Trạng thái đơn</dt>
-          <dd className="font-semibold">{order.status}</dd>
+          <dd className="font-semibold">{getOrderStatusLabel(order.status)}</dd>
         </div>
         <div className="flex justify-between gap-3">
           <dt className="text-muted-foreground">Thanh toán</dt>
-          <dd className="font-semibold">{order.paymentStatus}</dd>
+          <dd className="font-semibold">{getPaymentStatusLabel(order.paymentStatus)}</dd>
         </div>
       </dl>
 
