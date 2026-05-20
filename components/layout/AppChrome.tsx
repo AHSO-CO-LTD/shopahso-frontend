@@ -1,6 +1,8 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { CartDrawer } from "@/components/cart/CartDrawer";
+import { CartProvider } from "@/components/cart/CartProvider";
 import Footer from "@/components/layout/Footer";
 import Navbar from "@/components/layout/Navbar";
 
@@ -13,10 +15,13 @@ export default function AppChrome({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-[100dvh] flex-col">
-      <Navbar />
-      <main className="flex min-h-[100dvh] flex-1 flex-col">{children}</main>
-      <Footer />
-    </div>
+    <CartProvider>
+      <div className="flex min-h-[100dvh] flex-col">
+        <Navbar />
+        <main className="flex min-h-[100dvh] flex-1 flex-col">{children}</main>
+        <Footer />
+        <CartDrawer />
+      </div>
+    </CartProvider>
   );
 }

@@ -1,4 +1,4 @@
-import { BarChart3, ShieldCheck } from "lucide-react";
+import { BarChart3, CreditCard, Percent, ShieldCheck } from "lucide-react";
 
 export const adminNavigation = [
   {
@@ -10,6 +10,16 @@ export const adminNavigation = [
     icon: ShieldCheck,
     label: "Tai khoan",
     href: "/admin/tai-khoan",
+  },
+  {
+    icon: Percent,
+    label: "Thue",
+    href: "/admin/thue",
+  },
+  {
+    icon: CreditCard,
+    label: "Thanh toan",
+    href: "/admin/thanh-toan",
   },
 ];
 

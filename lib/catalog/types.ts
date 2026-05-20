@@ -17,6 +17,18 @@ export type CatalogVariantProduct = {
   slug: string;
 };
 
+export type CatalogVariantTax = {
+  source: "VARIANT" | "PRODUCT" | "CATEGORY" | "GLOBAL" | string;
+  targetId: string | null;
+  percent: string;
+};
+
+export type CatalogVariantPricing = {
+  effectivePrice: string;
+  taxAmount: string;
+  totalWithTax: string;
+};
+
 export type CatalogVariantAttributeValue = {
   id?: string;
   code: string;
@@ -44,6 +56,8 @@ export type CatalogVariant = {
   salePrice?: number | string | null;
   discountPercent?: number | string | null;
   taxPercent?: number | string | null;
+  tax?: CatalogVariantTax | null;
+  pricing?: CatalogVariantPricing | null;
   stockQuantity: number;
   unit: string | null;
   minOrderQuantity: number;
@@ -90,6 +104,8 @@ export type CatalogFeaturedProduct = {
     slug: string;
     imageUrls: string[];
     effectiveImageUrls?: string[];
+    tax?: CatalogVariantTax | null;
+    pricing?: CatalogVariantPricing | null;
   }>;
 };
 
