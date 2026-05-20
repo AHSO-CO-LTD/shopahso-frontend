@@ -1,12 +1,23 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { gsap } from "gsap";
 import { toast } from "sonner";
-import { ChevronDown, LayoutDashboard, LogOut, ShoppingCart, UserCircle, Users } from "lucide-react";
+import {
+  ChevronDown,
+  ClipboardList,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Search,
+  ShoppingCart,
+  UserCircle,
+  Users,
+  X,
+} from "lucide-react";
 import { searchCatalogVariants } from "@/lib/api/services/catalog-variants.service";
 import type { CatalogVariant } from "@/lib/catalog/types";
 import { useCart } from "@/components/cart/CartProvider";
@@ -16,6 +27,8 @@ import { Button } from "@/components/ui/button";
 const Navbar = () => {
   const navRef = useRef<HTMLElement>(null);
   const accountMenuRef = useRef<HTMLDivElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const mobileToggleRef = useRef<HTMLButtonElement>(null);
   const searchBoxRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { isAuthenticated, isInitializing, logout, profile } = useAuth();
@@ -25,6 +38,7 @@ const Navbar = () => {
   const [searchResults, setSearchResults] = useState<CatalogVariant[]>([]);
   const [isSearchLoading, setIsSearchLoading] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchTotal, setSearchTotal] = useState(0);
 
   useEffect(() => {
@@ -43,12 +57,20 @@ const Navbar = () => {
       if (!searchBoxRef.current?.contains(event.target as Node)) {
         setIsSearchOpen(false);
       }
+      if (
+        isMobileMenuOpen &&
+        !mobileMenuRef.current?.contains(event.target as Node) &&
+        !mobileToggleRef.current?.contains(event.target as Node)
+      ) {
+        setIsMobileMenuOpen(false);
+      }
     }
 
     function handleEscape(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setIsAccountMenuOpen(false);
         setIsSearchOpen(false);
+        setIsMobileMenuOpen(false);
       }
     }
 
@@ -59,7 +81,7 @@ const Navbar = () => {
       document.removeEventListener("mousedown", handlePointerDown);
       document.removeEventListener("keydown", handleEscape);
     };
-  }, []);
+  }, [isMobileMenuOpen]);
 
   useEffect(() => {
     const keyword = searchKeyword.trim();
@@ -118,6 +140,7 @@ const Navbar = () => {
 
     const keyword = searchKeyword.trim();
     setIsSearchOpen(false);
+    setIsMobileMenuOpen(false);
 
     if (!keyword) {
       router.push("/san-pham");
@@ -129,14 +152,20 @@ const Navbar = () => {
     router.push(`/san-pham?${params.toString()}`);
   }
 
+  function closeMobileMenu() {
+    setIsAccountMenuOpen(false);
+    setIsMobileMenuOpen(false);
+    setIsSearchOpen(false);
+  }
+
   return (
     <header
       ref={navRef}
       className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
     >
-      <div className="container mx-auto flex h-20 items-center justify-between gap-8 px-4">
+      <div className="container mx-auto flex h-16 items-center justify-between gap-3 px-4 lg:h-20 lg:gap-8">
         <Link href="/san-pham" className="flex shrink-0 items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center bg-white p-1">
+          <div className="flex h-11 w-11 items-center justify-center bg-white p-1 lg:h-12 lg:w-12">
             <Image
               src="/logo.png"
               alt="ShopAHSO"
@@ -243,7 +272,7 @@ const Navbar = () => {
           ) : null}
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           <button
             type="button"
             className="relative inline-flex size-10 items-center justify-center border border-transparent p-2 transition-colors hover:border-primary hover:bg-muted hover:text-primary"
@@ -294,6 +323,15 @@ const Navbar = () => {
                     <UserCircle className="size-4" />
                     <span>Hồ sơ của tôi</span>
                   </Link>
+                  <Link
+                    href="/don-hang"
+                    role="menuitem"
+                    className="flex w-full items-center gap-3 px-3 py-3 text-sm font-semibold transition-colors hover:bg-muted"
+                    onClick={() => setIsAccountMenuOpen(false)}
+                  >
+                    <ClipboardList className="size-4" />
+                    <span>Đơn hàng của tôi</span>
+                  </Link>
                   {profile.role === "ADMIN" ? (
                     <Link
                       href="/admin"
@@ -336,26 +374,202 @@ const Navbar = () => {
             </div>
           )}
 
-          <button type="button" className="p-2 lg:hidden">
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="square"
-              strokeLinejoin="miter"
-            >
-              <line x1="3" y1="12" x2="21" y2="12" />
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <line x1="3" y1="18" x2="21" y2="18" />
-            </svg>
+          <button
+            ref={mobileToggleRef}
+            type="button"
+            className="inline-flex size-10 cursor-pointer items-center justify-center border border-border transition-colors hover:border-primary hover:bg-muted hover:text-primary lg:hidden"
+            aria-label={isMobileMenuOpen ? "Đóng menu" : "Mở menu"}
+            aria-expanded={isMobileMenuOpen}
+            onClick={() => setIsMobileMenuOpen((currentState) => !currentState)}
+          >
+            {isMobileMenuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
           </button>
         </div>
       </div>
+      {isMobileMenuOpen ? (
+        <div ref={mobileMenuRef} className="border-t border-border bg-background lg:hidden">
+          <div className="container mx-auto grid gap-4 px-4 py-4">
+            <div className="relative">
+              <form className="relative flex items-center" onSubmit={handleSearchSubmit}>
+                <input
+                  type="text"
+                  placeholder="Tìm SKU, thông số kỹ thuật..."
+                  className="h-11 w-full border border-border bg-muted px-10 pr-20 text-sm outline-none focus:border-primary"
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setSearchKeyword(value);
+                    if (!value.trim()) {
+                      setSearchResults([]);
+                      setSearchTotal(0);
+                      setIsSearchOpen(false);
+                    }
+                  }}
+                  onFocus={() => {
+                    if (searchKeyword.trim()) {
+                      setIsSearchOpen(true);
+                    }
+                  }}
+                  value={searchKeyword}
+                />
+                <Search className="pointer-events-none absolute left-3 size-4 text-muted-foreground" />
+                <button
+                  type="submit"
+                  className="absolute right-1 inline-flex h-9 cursor-pointer items-center justify-center border border-border bg-background px-3 text-xs font-semibold transition-colors hover:border-primary hover:text-primary"
+                >
+                  Tìm
+                </button>
+              </form>
+
+              {isSearchOpen ? (
+                <SearchResultPanel
+                  isLoading={isSearchLoading}
+                  results={searchResults}
+                  total={searchTotal}
+                  onSelect={closeMobileMenu}
+                />
+              ) : null}
+            </div>
+
+            <nav className="grid border border-border text-sm font-semibold">
+              <MobileNavLink href="https://ahso.vn" label="Trang chủ" onSelect={closeMobileMenu} />
+              <MobileNavLink href="/san-pham" label="Sản phẩm" onSelect={closeMobileMenu} />
+              <MobileNavLink href="/thuong-hieu" label="Thương hiệu" onSelect={closeMobileMenu} />
+              <MobileNavLink href="/datasheet" label="Datasheet" onSelect={closeMobileMenu} />
+            </nav>
+
+            <div className="border border-border bg-muted/10 p-3">
+              {isInitializing ? (
+                <p className="text-sm font-semibold text-muted-foreground">Đang tải tài khoản...</p>
+              ) : isAuthenticated && profile ? (
+                <div className="grid gap-3">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      Tài khoản
+                    </p>
+                    <p className="mt-1 truncate text-sm font-semibold">{profile.email}</p>
+                  </div>
+                  <div className="grid border border-border bg-background">
+                    <MobileMenuItem href="/tai-khoan" icon={<UserCircle className="size-4" />} label="Hồ sơ của tôi" onSelect={closeMobileMenu} />
+                    <MobileMenuItem href="/don-hang" icon={<ClipboardList className="size-4" />} label="Đơn hàng của tôi" onSelect={closeMobileMenu} />
+                    {profile.role === "ADMIN" ? (
+                      <MobileMenuItem href="/admin" icon={<LayoutDashboard className="size-4" />} label="Trang quản trị" onSelect={closeMobileMenu} />
+                    ) : null}
+                    {profile.role === "STAFF" || profile.role === "ADMIN" ? (
+                      <MobileMenuItem href="/nhan-vien" icon={<Users className="size-4" />} label="Trang nhân viên" onSelect={closeMobileMenu} />
+                    ) : null}
+                    <button
+                      type="button"
+                      className="flex h-11 w-full cursor-pointer items-center gap-3 border-t border-border px-3 text-left text-sm font-semibold transition-colors hover:bg-muted"
+                      onClick={() => {
+                        closeMobileMenu();
+                        void handleLogout();
+                      }}
+                    >
+                      <LogOut className="size-4" />
+                      Đăng xuất
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <Button asChild className="h-11 w-full text-sm font-semibold">
+                  <Link href="/dang-nhap" onClick={closeMobileMenu}>
+                    Đăng nhập
+                  </Link>
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </header>
   );
 };
+
+function SearchResultPanel({
+  isLoading,
+  onSelect,
+  results,
+  total,
+}: {
+  isLoading: boolean;
+  onSelect: () => void;
+  results: CatalogVariant[];
+  total: number;
+}) {
+  return (
+    <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 border border-border bg-background">
+      {isLoading ? (
+        <p className="px-4 py-3 text-sm text-muted-foreground">Đang tìm kiếm...</p>
+      ) : results.length === 0 ? (
+        <p className="px-4 py-3 text-sm text-muted-foreground">Không tìm thấy kết quả phù hợp.</p>
+      ) : (
+        <>
+          <ul className="divide-y divide-border">
+            {results.map((item) => (
+              <li key={item.id}>
+                <Link
+                  href={`/san-pham/${item.slug}`}
+                  className="block px-4 py-3 transition-colors hover:bg-muted/40"
+                  onClick={onSelect}
+                >
+                  <p className="truncate text-sm font-semibold">{item.name}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    SKU: {item.sku} | {item.product.name}
+                  </p>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <div className="border-t border-border px-4 py-2 text-xs text-muted-foreground">
+            Tổng kết quả: {total}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function MobileNavLink({
+  href,
+  label,
+  onSelect,
+}: {
+  href: string;
+  label: string;
+  onSelect: () => void;
+}) {
+  return (
+    <Link
+      href={href}
+      className="flex h-11 cursor-pointer items-center border-b border-border px-3 transition-colors last:border-b-0 hover:bg-muted hover:text-primary"
+      onClick={onSelect}
+    >
+      {label}
+    </Link>
+  );
+}
+
+function MobileMenuItem({
+  href,
+  icon,
+  label,
+  onSelect,
+}: {
+  href: string;
+  icon: ReactNode;
+  label: string;
+  onSelect: () => void;
+}) {
+  return (
+    <Link
+      href={href}
+      className="flex h-11 cursor-pointer items-center gap-3 border-b border-border px-3 text-sm font-semibold transition-colors last:border-b-0 hover:bg-muted"
+      onClick={onSelect}
+    >
+      {icon}
+      {label}
+    </Link>
+  );
+}
 
 export default Navbar;

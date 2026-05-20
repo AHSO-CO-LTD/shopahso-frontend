@@ -49,6 +49,34 @@ export function getCatalogVariantBySlug(slug: string) {
   });
 }
 
+export async function resolveCatalogVariantSlugById(variantId: string) {
+  const firstPage = await searchCatalogVariants({
+    page: 1,
+    limit: 100,
+    sort: "relevance",
+  });
+
+  const firstPageMatch = firstPage.items.find((item) => item.id === variantId);
+  if (firstPageMatch?.slug) {
+    return firstPageMatch.slug;
+  }
+
+  for (let page = 2; page <= firstPage.totalPages; page += 1) {
+    const response = await searchCatalogVariants({
+      page,
+      limit: 100,
+      sort: "relevance",
+    });
+    const matchedVariant = response.items.find((item) => item.id === variantId);
+
+    if (matchedVariant?.slug) {
+      return matchedVariant.slug;
+    }
+  }
+
+  return null;
+}
+
 export function listCatalogBrands() {
   return apiRequest<Brand[]>("/catalog/brands", {
     method: "GET",
