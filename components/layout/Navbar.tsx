@@ -6,9 +6,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { gsap } from "gsap";
 import { toast } from "sonner";
-import { ChevronDown, LayoutDashboard, LogOut, Users } from "lucide-react";
+import { ChevronDown, LayoutDashboard, LogOut, ShoppingCart, UserCircle, Users } from "lucide-react";
 import { searchCatalogVariants } from "@/lib/api/services/catalog-variants.service";
 import type { CatalogVariant } from "@/lib/catalog/types";
+import { useCart } from "@/components/cart/CartProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { Button } from "@/components/ui/button";
 
@@ -18,6 +19,7 @@ const Navbar = () => {
   const searchBoxRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { isAuthenticated, isInitializing, logout, profile } = useAuth();
+  const { cart, isLoading: isCartLoading, openDrawer } = useCart();
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [searchResults, setSearchResults] = useState<CatalogVariant[]>([]);
@@ -242,23 +244,15 @@ const Navbar = () => {
         </div>
 
         <div className="flex items-center gap-4">
-          <button type="button" className="relative p-2 transition-colors hover:bg-muted">
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="square"
-              strokeLinejoin="miter"
-            >
-              <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <path d="M16 10a4 4 0 0 1-8 0" />
-            </svg>
-            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center bg-primary text-[10px] font-bold text-white">
-              0
+          <button
+            type="button"
+            className="relative inline-flex size-10 items-center justify-center border border-transparent p-2 transition-colors hover:border-primary hover:bg-muted hover:text-primary"
+            onClick={openDrawer}
+            aria-label="Mở giỏ hàng"
+          >
+            <ShoppingCart className="size-5" />
+            <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center bg-primary px-1 text-[10px] font-bold text-white">
+              {isCartLoading && !cart ? "..." : cart?.summary.itemCount ?? 0}
             </span>
           </button>
 
@@ -291,6 +285,15 @@ const Navbar = () => {
                   role="menu"
                   className="absolute top-[calc(100%+8px)] right-0 w-full border border-border bg-background p-2 shadow-sm"
                 >
+                  <Link
+                    href="/tai-khoan"
+                    role="menuitem"
+                    className="flex w-full items-center gap-3 px-3 py-3 text-sm font-semibold transition-colors hover:bg-muted"
+                    onClick={() => setIsAccountMenuOpen(false)}
+                  >
+                    <UserCircle className="size-4" />
+                    <span>Hồ sơ của tôi</span>
+                  </Link>
                   {profile.role === "ADMIN" ? (
                     <Link
                       href="/admin"

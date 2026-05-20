@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { listCatalogFeaturedProducts } from "@/lib/api/services/catalog-variants.service";
+import { formatCatalogMoney, getCatalogPricingDisplay } from "@/lib/catalog/pricing";
 import type { CatalogFeaturedProduct } from "@/lib/catalog/types";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -16,6 +17,13 @@ function ProductCard({ product, large = false }: { product: CatalogFeaturedProdu
   const brandName = product.brand?.name ?? "Không gắn thương hiệu";
   const categoryName = product.category?.name ?? "Danh mục";
   const imageUrl = product.effectiveImageUrls?.[0];
+  const pricing = topVariant?.pricing
+    ? getCatalogPricingDisplay({
+        fallbackPrice: topVariant.pricing.totalWithTax,
+        pricing: topVariant.pricing,
+        tax: topVariant.tax,
+      })
+    : null;
 
   return (
     <div
@@ -57,6 +65,12 @@ function ProductCard({ product, large = false }: { product: CatalogFeaturedProdu
           <span className="font-mono text-xs text-primary">{partNumber}</span>
           <span className="text-xs text-muted-foreground">{brandName}</span>
         </div>
+        {pricing ? (
+          <div>
+            <p className="text-sm font-black text-primary">{formatCatalogMoney(pricing.totalWithTax)}</p>
+            <p className="text-[11px] text-muted-foreground">Đã gồm thuế {pricing.taxPercent}%</p>
+          </div>
+        ) : null}
         <Link
           href={`/san-pham/${topVariant?.slug ?? product.slug}`}
           className="mt-2 inline-flex cursor-pointer border border-border px-4 py-2 text-xs font-semibold transition-colors hover:border-primary hover:bg-primary hover:text-white"

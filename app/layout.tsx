@@ -35,7 +35,7 @@ export default function RootLayout({
       <body className="min-h-[100dvh] flex flex-col font-sans selection:bg-primary selection:text-white">
         <AuthProvider>
           <AppChrome>{children}</AppChrome>
-          <Toaster position="top-right" richColors />
+          <Toaster position="top-right" offset="96px" richColors />
         </AuthProvider>
       </body>
     </html>

@@ -4,6 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { getCatalogVariantBySlug } from "@/lib/api/services/catalog-variants.service";
+import { AddToCartButton } from "@/components/cart/AddToCartButton";
+import { getCatalogPricingDisplay } from "@/lib/catalog/pricing";
 import type { CatalogVariant, CatalogVariantAttributeValue } from "@/lib/catalog/types";
 
 type DisplaySpec = {
@@ -34,6 +36,18 @@ function toDisplayValueFromAttributeValue(item: CatalogVariantAttributeValue) {
     return item.valueEnum;
   }
   return "";
+}
+
+function formatMoney(value: string | number | null | undefined) {
+  const numericValue = Number(value ?? 0);
+
+  if (!Number.isFinite(numericValue)) {
+    return "0 đ";
+  }
+
+  return numericValue.toLocaleString("vi-VN", {
+    maximumFractionDigits: 0,
+  }) + " đ";
 }
 
 export default function ProductVariantDetailPage({ slug }: { slug: string }) {
@@ -119,6 +133,18 @@ export default function ProductVariantDetailPage({ slug }: { slug: string }) {
     }
 
     return [];
+  }, [variant]);
+
+  const taxPreview = useMemo(() => {
+    if (!variant) {
+      return null;
+    }
+
+    return getCatalogPricingDisplay({
+      fallbackPrice: variant.salePrice ?? variant.price,
+      pricing: variant.pricing,
+      tax: variant.tax,
+    });
   }, [variant]);
 
   useEffect(() => {
@@ -234,13 +260,39 @@ export default function ProductVariantDetailPage({ slug }: { slug: string }) {
             </div>
             <aside className="border border-border bg-muted/20 p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Giá bán</p>
-              <p className="mt-2 text-3xl font-black text-primary">{variant.price.toLocaleString("vi-VN")} đ</p>
-              <button
-                className="mt-6 inline-flex h-11 w-full cursor-pointer items-center justify-center border border-border bg-background px-4 text-sm font-semibold transition-colors hover:border-primary hover:text-primary"
-                type="button"
-              >
-                Liên hệ đặt hàng
-              </button>
+              <p className="mt-2 text-3xl font-black text-primary">
+                {formatMoney(taxPreview?.totalWithTax ?? variant.price)}
+              </p>
+              <div className="mt-4 grid gap-2 border border-border bg-background p-3 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">Giá trước thuế</span>
+                  <span className="font-semibold">{formatMoney(taxPreview?.effectivePrice ?? variant.price)}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">Thuế</span>
+                  <span className="font-semibold">
+                    {taxPreview?.taxPercent ?? 0}% ({formatMoney(taxPreview?.taxAmount ?? 0)})
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3 border-t border-border pt-2">
+                  <span className="font-semibold">Tổng sau thuế</span>
+                  <span className="font-black text-primary">{formatMoney(taxPreview?.totalWithTax ?? variant.price)}</span>
+                </div>
+              </div>
+              <div className="mt-6 grid gap-2">
+                <AddToCartButton
+                  active={variant.active}
+                  className="h-11 w-full px-4"
+                  stockQuantity={variant.stockQuantity}
+                  variantId={variant.id}
+                />
+                <button
+                  className="inline-flex h-11 w-full cursor-pointer items-center justify-center border border-border bg-background px-4 text-sm font-semibold transition-colors hover:border-primary hover:text-primary"
+                  type="button"
+                >
+                  Liên hệ đặt hàng
+                </button>
+              </div>
             </aside>
           </article>
         )}

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { listCatalogNewestProducts } from "@/lib/api/services/catalog-variants.service";
+import { formatCatalogMoney, getCatalogPricingDisplay } from "@/lib/catalog/pricing";
 import type { CatalogFeaturedProduct } from "@/lib/catalog/types";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -13,6 +14,13 @@ gsap.registerPlugin(ScrollTrigger);
 function ArrivalCard({ product }: { product: CatalogFeaturedProduct }) {
   const topVariant = product.variants[0];
   const imageUrl = product.effectiveImageUrls?.[0];
+  const pricing = topVariant?.pricing
+    ? getCatalogPricingDisplay({
+        fallbackPrice: topVariant.pricing.totalWithTax,
+        pricing: topVariant.pricing,
+        tax: topVariant.tax,
+      })
+    : null;
   const dateStr = new Intl.DateTimeFormat("vi-VN", {
     day: "2-digit",
     month: "2-digit",
@@ -60,6 +68,12 @@ function ArrivalCard({ product }: { product: CatalogFeaturedProduct }) {
           <span className="font-mono text-xs text-primary">{topVariant?.sku ?? "Đang cập nhật"}</span>
           <span className="text-xs text-muted-foreground">{product.brand?.name ?? "Không gắn thương hiệu"}</span>
         </div>
+        {pricing ? (
+          <div>
+            <p className="text-sm font-black text-primary">{formatCatalogMoney(pricing.totalWithTax)}</p>
+            <p className="text-[11px] text-muted-foreground">Đã gồm thuế {pricing.taxPercent}%</p>
+          </div>
+        ) : null}
         <Link
           href={`/san-pham/${topVariant?.slug ?? product.slug}`}
           className="mt-2 inline-flex cursor-pointer border border-border px-4 py-2 text-xs font-semibold transition-colors hover:border-primary hover:bg-primary hover:text-white"

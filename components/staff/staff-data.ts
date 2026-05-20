@@ -1,4 +1,4 @@
-import { Boxes, ShoppingCart, Tags, Users } from "lucide-react";
+import { Boxes, CreditCard, Percent, ShoppingCart, Tags, Users } from "lucide-react";
 
 export const staffNavigation = [
   {
@@ -20,6 +20,16 @@ export const staffNavigation = [
     icon: Tags,
     label: "Thương hiệu",
     href: "/nhan-vien/thuong-hieu",
+  },
+  {
+    icon: Percent,
+    label: "Thuế",
+    href: "/nhan-vien/thue",
+  },
+  {
+    icon: CreditCard,
+    label: "Thanh toán",
+    href: "/nhan-vien/thanh-toan",
   },
 ];
 

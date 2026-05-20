@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { listCatalogBrands, listCatalogVariants } from "@/lib/api/services/catalog-variants.service";
 import type { Brand } from "@/lib/brand/types";
+import { formatCatalogMoney, getCatalogPricingDisplay } from "@/lib/catalog/pricing";
 import type { CatalogVariant } from "@/lib/catalog/types";
 
 export default function BrandDetailPage({ slug }: { slug: string }) {
@@ -120,7 +121,7 @@ export default function BrandDetailPage({ slug }: { slug: string }) {
                     <div className="flex flex-1 flex-col gap-2 px-4 py-4">
                       <p className="text-xs text-muted-foreground">SKU: {variant.sku}</p>
                       <p className="text-xs text-muted-foreground">Tồn kho: {variant.stockQuantity}</p>
-                      <p className="text-lg font-black text-primary">{variant.price.toLocaleString("vi-VN")} đ</p>
+                      <BrandVariantPrice variant={variant} />
                     </div>
                     <div className="border-t border-border px-4 py-3">
                       <Link
@@ -138,5 +139,22 @@ export default function BrandDetailPage({ slug }: { slug: string }) {
         )}
       </section>
     </main>
+  );
+}
+
+function BrandVariantPrice({ variant }: { variant: CatalogVariant }) {
+  const pricing = getCatalogPricingDisplay({
+    fallbackPrice: variant.salePrice ?? variant.price,
+    pricing: variant.pricing,
+    tax: variant.tax,
+  });
+
+  return (
+    <div>
+      <p className="text-lg font-black text-primary">{formatCatalogMoney(pricing.totalWithTax)}</p>
+      <p className="text-xs text-muted-foreground">
+        Đã gồm thuế {pricing.taxPercent}% ({formatCatalogMoney(pricing.taxAmount)})
+      </p>
+    </div>
   );
 }

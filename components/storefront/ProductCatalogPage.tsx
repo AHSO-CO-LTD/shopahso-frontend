@@ -10,8 +10,10 @@ import {
   listCatalogCategoriesTree,
   searchCatalogVariants,
 } from "@/lib/api/services/catalog-variants.service";
+import { AddToCartButton } from "@/components/cart/AddToCartButton";
 import type { Brand } from "@/lib/brand/types";
 import type { CategoryTreeNode } from "@/lib/category/types";
+import { formatCatalogMoney, getCatalogPricingDisplay } from "@/lib/catalog/pricing";
 import type { CatalogProductFilterOption, CatalogVariant } from "@/lib/catalog/types";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -529,10 +531,17 @@ export default function ProductCatalogPage() {
                       Thương hiệu: {variant.brand?.name ?? "Không gắn thương hiệu"}
                     </p>
                     <p className="text-xs text-muted-foreground">Tồn kho: {variant.stockQuantity}</p>
-                    <p className="text-lg font-black text-primary">{Number(variant.price).toLocaleString("vi-VN")} đ</p>
+                    <CatalogPrice variant={variant} />
                   </div>
-                  <div className="border-t border-border px-4 py-3">
-                    <ButtonLink href={`/san-pham/${variant.slug}`} label="Xem chi tiết" />
+                  <div className="grid grid-cols-2 gap-2 border-t border-border px-4 py-3">
+                    <ButtonLink href={`/san-pham/${variant.slug}`} label="Chi tiết" />
+                    <AddToCartButton
+                      active={variant.active}
+                      className="h-9 w-full"
+                      label="Thêm"
+                      stockQuantity={variant.stockQuantity}
+                      variantId={variant.id}
+                    />
                   </div>
                 </article>
               ))}
@@ -596,6 +605,23 @@ function ButtonLink({ href, label }: { href: string; label: string }) {
     >
       {label}
     </Link>
+  );
+}
+
+function CatalogPrice({ variant }: { variant: CatalogVariant }) {
+  const pricing = getCatalogPricingDisplay({
+    fallbackPrice: variant.salePrice ?? variant.price,
+    pricing: variant.pricing,
+    tax: variant.tax,
+  });
+
+  return (
+    <div>
+      <p className="text-lg font-black text-primary">{formatCatalogMoney(pricing.totalWithTax)}</p>
+      <p className="text-xs text-muted-foreground">
+        Đã gồm thuế {pricing.taxPercent}% ({formatCatalogMoney(pricing.taxAmount)})
+      </p>
+    </div>
   );
 }
 
