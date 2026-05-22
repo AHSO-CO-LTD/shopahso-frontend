@@ -28,6 +28,12 @@ export type RegisterPayload = {
   password: string;
 };
 
+export type UpdateProfilePayload = {
+  fullName?: string;
+  dateOfBirth?: string;
+  phoneNumber?: string;
+};
+
 export type LogoutResponse = {
   success: boolean;
 };

@@ -14,6 +14,7 @@ import {
   logout as logoutRequest,
   refreshAuthSession,
   register as registerRequest,
+  updateMyProfile,
 } from "@/lib/api/services/auth.service";
 import {
   AUTH_STORAGE_EVENT,
@@ -27,6 +28,7 @@ import type {
   AuthTokens,
   LoginPayload,
   RegisterPayload,
+  UpdateProfilePayload,
 } from "@/lib/auth/types";
 
 type AuthContextValue = {
@@ -37,12 +39,18 @@ type AuthContextValue = {
   profile: AuthProfile | null;
   refreshProfile: () => Promise<AuthProfile | null>;
   register: (payload: RegisterPayload) => Promise<AuthProfile>;
+  updateProfile: (payload: UpdateProfilePayload) => Promise<AuthProfile>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 function isUnauthorizedError(error: unknown) {
   return error instanceof ApiError && error.status === 401;
+}
+
+function expireAuthSession(): never {
+  clearStoredAuthTokens();
+  throw new ApiError("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.", 401, "/auth/me");
 }
 
 async function hydrateProfileFromTokens(tokens: AuthTokens) {
@@ -170,6 +178,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return syncSession(session);
   };
 
+  const handleUpdateProfile = async (payload: UpdateProfilePayload) => {
+    const currentTokens = getStoredAuthTokens() ?? tokens;
+
+    if (!currentTokens) {
+      expireAuthSession();
+    }
+
+    const activeTokens = currentTokens;
+
+    try {
+      const nextProfile = await updateMyProfile(activeTokens.accessToken, payload);
+
+      startTransition(() => {
+        setProfile(nextProfile);
+      });
+
+      return nextProfile;
+    } catch (error) {
+      if (!isUnauthorizedError(error)) {
+        throw error;
+      }
+
+      try {
+        const refreshedSession = await refreshAuthSession(activeTokens);
+        const refreshedTokens = {
+          accessToken: refreshedSession.accessToken,
+          refreshToken: refreshedSession.refreshToken,
+        };
+        const nextProfile = await updateMyProfile(refreshedTokens.accessToken, payload);
+
+        setTokens(refreshedTokens);
+        setStoredAuthTokens(refreshedTokens);
+        startTransition(() => {
+          setProfile(nextProfile);
+        });
+
+        return nextProfile;
+      } catch (refreshError) {
+        if (isUnauthorizedError(refreshError)) {
+          setTokens(null);
+          startTransition(() => {
+            setProfile(null);
+          });
+          expireAuthSession();
+        }
+
+        throw refreshError;
+      }
+    }
+  };
+
   const handleLogout = async () => {
     const currentTokens = getStoredAuthTokens() ?? tokens;
 
@@ -213,6 +272,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     profile,
     refreshProfile: handleRefreshProfile,
     register: handleRegister,
+    updateProfile: handleUpdateProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

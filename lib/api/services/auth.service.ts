@@ -6,6 +6,7 @@ import type {
   LoginPayload,
   LogoutResponse,
   RegisterPayload,
+  UpdateProfilePayload,
 } from "@/lib/auth/types";
 
 function getAuthHeaders(accessToken?: string) {
@@ -45,6 +46,14 @@ export function getMyProfile(accessToken: string) {
   return apiRequest<AuthProfile>("/auth/me", {
     headers: getAuthHeaders(accessToken),
     method: "GET",
+  });
+}
+
+export function updateMyProfile(accessToken: string, payload: UpdateProfilePayload) {
+  return apiRequest<AuthProfile>("/auth/me", {
+    body: payload,
+    headers: getAuthHeaders(accessToken),
+    method: "PATCH",
   });
 }
 

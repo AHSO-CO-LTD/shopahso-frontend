@@ -10,10 +10,9 @@ const pageLabels: Record<string, string> = {
   "/nhan-vien/san-pham": "Quản lý sản phẩm",
   "/nhan-vien/san-pham/tao": "Tạo sản phẩm",
   "/nhan-vien/nguoi-dung": "Quản lý người dùng",
+  "/nhan-vien/don-hang": "Quản lý đơn hàng",
   "/nhan-vien/danh-muc": "Tạo danh mục",
   "/nhan-vien/thuong-hieu": "Quản lý thương hiệu",
-  "/nhan-vien/thue": "Thiết lập thuế",
-  "/nhan-vien/thanh-toan": "Cấu hình thanh toán",
 };
 
 type StaffHeaderProps = {

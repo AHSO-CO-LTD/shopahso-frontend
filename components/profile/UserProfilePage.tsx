@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { gsap } from "gsap";
-import { Check, Edit3, MapPin, Plus, Star, Trash2, X } from "lucide-react";
+import { Check, Edit3, MapPin, Plus, Save, Star, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,7 +16,7 @@ import {
   updateUserAddress,
 } from "@/lib/api/services/user-addresses.service";
 import { getWardsByProvinceCode, provinceOptions } from "@/lib/address/vietnam-locations";
-import type { AuthProfile } from "@/lib/auth/types";
+import type { AuthProfile, UpdateProfilePayload } from "@/lib/auth/types";
 import type { UserAddress } from "@/lib/user-address/types";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { cn } from "@/lib/utils";
@@ -30,6 +30,12 @@ type AddressFormValue = {
   streetAddress: string;
   note: string;
   status: boolean;
+};
+
+type ProfileFormValue = {
+  fullName: string;
+  dateOfBirth: string;
+  phoneNumber: string;
 };
 
 type SelectOption = {
@@ -50,6 +56,14 @@ const EMPTY_FORM: AddressFormValue = {
   status: false,
 };
 
+function toProfileFormValue(profile: AuthProfile): ProfileFormValue {
+  return {
+    fullName: profile.fullName ?? "",
+    dateOfBirth: formatDateForInput(profile.dateOfBirth),
+    phoneNumber: profile.phoneNumber ?? "",
+  };
+}
+
 function toFormValue(address: UserAddress): AddressFormValue {
   return {
     label: address.label,
@@ -65,7 +79,7 @@ function toFormValue(address: UserAddress): AddressFormValue {
 
 export default function UserProfilePage() {
   const router = useRouter();
-  const { isInitializing, profile } = useAuth();
+  const { isInitializing, profile, updateProfile } = useAuth();
   const profileId = profile?.id;
   const addressFormRef = useRef<HTMLDivElement | null>(null);
   const [addresses, setAddresses] = useState<UserAddress[]>([]);
@@ -78,6 +92,7 @@ export default function UserProfilePage() {
   const [deletingAddress, setDeletingAddress] = useState<UserAddress | null>(null);
   const [isSaveConfirmOpen, setIsSaveConfirmOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isProfileEditorOpen, setIsProfileEditorOpen] = useState(false);
   const [isLoadingAddresses, setIsLoadingAddresses] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -299,8 +314,22 @@ export default function UserProfilePage() {
         <ProfilePageHeader />
 
         <div className="grid gap-3 sm:gap-4 lg:gap-6 xl:grid-cols-[minmax(280px,340px)_minmax(0,1fr)]">
-          <UserInfoPanel profile={profile} />
+          <UserInfoPanel
+            isProfileEditorOpen={isProfileEditorOpen}
+            profile={profile}
+            onToggleProfileEditor={() => setIsProfileEditorOpen((currentValue) => !currentValue)}
+          />
           <div className="grid gap-4 sm:gap-6">
+            {isProfileEditorOpen ? (
+              <ProfileSettingsSection
+                key={`${profile.id}-${profile.updatedAt}`}
+                profile={profile}
+                onCancel={() => setIsProfileEditorOpen(false)}
+                onUpdated={() => setIsProfileEditorOpen(false)}
+                onUpdateProfile={updateProfile}
+              />
+            ) : null}
+
             <AddressBookSection
               addresses={addresses}
               errorMessage={errorMessage}
@@ -422,11 +451,19 @@ function ProfilePageHeader() {
   );
 }
 
-function UserInfoPanel({ profile }: { profile: AuthProfile }) {
+function UserInfoPanel({
+  isProfileEditorOpen,
+  onToggleProfileEditor,
+  profile,
+}: {
+  isProfileEditorOpen: boolean;
+  onToggleProfileEditor: () => void;
+  profile: AuthProfile;
+}) {
   const profileRows = [
     { label: "Email", value: profile.email },
     { label: "Số điện thoại", value: profile.phoneNumber ?? "Chưa cập nhật" },
-    { label: "Vai trò", value: profile.role },
+    { label: "Ngày sinh", value: profile.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString("vi-VN") : "Chưa cập nhật" },
     { label: "Ngày tạo", value: new Date(profile.createdAt).toLocaleDateString("vi-VN") },
   ];
 
@@ -435,8 +472,20 @@ function UserInfoPanel({ profile }: { profile: AuthProfile }) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground sm:text-xs">Thông tin</p>
-          <h2 className="mt-1 break-words text-lg font-black tracking-tight sm:mt-2 sm:text-2xl xl:text-xl">{profile.fullName}</h2>
+          <h2 className="mt-1 break-words text-lg font-black tracking-tight sm:mt-2 sm:text-2xl xl:text-xl">
+            {profile.fullName || "Chưa cập nhật họ tên"}
+          </h2>
         </div>
+        <Button
+          type="button"
+          variant={isProfileEditorOpen ? "default" : "outline"}
+          size="icon"
+          className="h-8 w-8 shrink-0 cursor-pointer rounded-none"
+          onClick={onToggleProfileEditor}
+          aria-label={isProfileEditorOpen ? "Ẩn chỉnh sửa hồ sơ" : "Chỉnh sửa hồ sơ"}
+        >
+          {isProfileEditorOpen ? <X className="size-4" /> : <Edit3 className="size-4" />}
+        </Button>
       </div>
       <dl className="mt-3 grid grid-cols-2 gap-2 text-xs sm:mt-5 sm:gap-3 sm:text-sm xl:grid-cols-1">
         {profileRows.map((row) => (
@@ -455,6 +504,161 @@ function UserInfoPanel({ profile }: { profile: AuthProfile }) {
         ))}
       </dl>
     </aside>
+  );
+}
+
+function ProfileSettingsSection({
+  onCancel,
+  onUpdated,
+  onUpdateProfile,
+  profile,
+}: {
+  onCancel: () => void;
+  onUpdated: () => void;
+  onUpdateProfile: (payload: UpdateProfilePayload) => Promise<AuthProfile>;
+  profile: AuthProfile;
+}) {
+  const [formValue, setFormValue] = useState<ProfileFormValue>(() => toProfileFormValue(profile));
+  const [errors, setErrors] = useState<Partial<Record<keyof ProfileFormValue, string>>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const originalValue = useMemo(() => toProfileFormValue(profile), [profile]);
+  const isDirty =
+    originalValue.fullName !== formValue.fullName ||
+    originalValue.dateOfBirth !== formValue.dateOfBirth ||
+    originalValue.phoneNumber !== formValue.phoneNumber;
+
+  function validateForm(values: ProfileFormValue) {
+    const nextErrors: Partial<Record<keyof ProfileFormValue, string>> = {};
+
+    if (!values.fullName.trim()) {
+      nextErrors.fullName = "Vui lòng nhập họ và tên.";
+    }
+
+    if (!values.dateOfBirth) {
+      nextErrors.dateOfBirth = "Vui lòng chọn ngày sinh.";
+    }
+
+    if (values.phoneNumber.trim() && !/^\+?[0-9]{9,15}$/.test(values.phoneNumber.trim())) {
+      nextErrors.phoneNumber = "Số điện thoại chưa đúng định dạng.";
+    }
+
+    return nextErrors;
+  }
+
+  function updateField(field: keyof ProfileFormValue, value: string) {
+    setFormValue((currentValue) => ({
+      ...currentValue,
+      [field]: value,
+    }));
+    setErrors((currentErrors) => ({
+      ...currentErrors,
+      [field]: undefined,
+    }));
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const nextErrors = validateForm(formValue);
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
+      toast.warning("Vui lòng kiểm tra lại thông tin hồ sơ.");
+      return;
+    }
+
+    if (!isDirty) {
+      toast.warning("Thông tin hồ sơ chưa có thay đổi.");
+      return;
+    }
+
+    const loadingToastId = toast.loading("Đang cập nhật hồ sơ...");
+
+    try {
+      setIsSubmitting(true);
+      await onUpdateProfile({
+        dateOfBirth: toIsoDate(formValue.dateOfBirth),
+        fullName: formValue.fullName.trim(),
+        phoneNumber: formValue.phoneNumber.trim() || undefined,
+      });
+      toast.success("Đã cập nhật hồ sơ.", { id: loadingToastId });
+      onUpdated();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không thể cập nhật hồ sơ.", {
+        id: loadingToastId,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <section className="border border-border bg-background">
+      <div className="border-b border-border px-3 py-3 sm:px-5 sm:py-4">
+        <h2 className="text-base font-black tracking-tight">Thông tin cá nhân</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground sm:mt-1">
+          Cập nhật thông tin dùng cho hồ sơ và checkout.
+        </p>
+      </div>
+
+      <form className="grid gap-3 p-3 sm:grid-cols-2 sm:gap-4 sm:p-5" onSubmit={handleSubmit}>
+        <TextField
+          autoComplete="name"
+          error={errors.fullName}
+          label="Họ và tên"
+          required
+          value={formValue.fullName}
+          onChange={(value) => updateField("fullName", value)}
+        />
+        <TextField
+          autoComplete="bday"
+          error={errors.dateOfBirth}
+          label="Ngày sinh"
+          required
+          type="date"
+          value={formValue.dateOfBirth}
+          onChange={(value) => updateField("dateOfBirth", value)}
+        />
+        <TextField
+          autoComplete="tel"
+          error={errors.phoneNumber}
+          label="Số điện thoại"
+          placeholder="+84901234567"
+          type="tel"
+          value={formValue.phoneNumber}
+          onChange={(value) => updateField("phoneNumber", value)}
+        />
+        <TextField
+          disabled
+          hint="Email đăng ký không thể thay đổi."
+          label="Email"
+          type="email"
+          value={profile.email}
+          onChange={() => undefined}
+        />
+        <div className="sm:col-span-2">
+          <div className="grid gap-2 sm:flex sm:items-center">
+            <Button
+              type="submit"
+              className="h-10 w-full cursor-pointer rounded-none px-4 text-sm font-semibold sm:h-11 sm:w-auto sm:min-w-44"
+              disabled={isSubmitting || !isDirty}
+            >
+              <Save className="size-4" />
+              {isSubmitting ? "Đang lưu" : "Lưu hồ sơ"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 w-full cursor-pointer rounded-none px-4 text-sm font-semibold sm:h-11 sm:w-auto"
+              disabled={isSubmitting}
+              onClick={onCancel}
+            >
+              <X className="size-4" />
+              Hủy
+            </Button>
+          </div>
+        </div>
+      </form>
+    </section>
   );
 }
 
@@ -793,20 +997,32 @@ function AddressForm({
 }
 
 function TextField({
+  autoComplete,
   className = "",
+  disabled = false,
+  error,
+  hint,
   label,
   onChange,
   placeholder,
   required = false,
+  type = "text",
   value,
 }: {
+  autoComplete?: string;
   className?: string;
+  disabled?: boolean;
+  error?: string;
+  hint?: string;
   label: string;
   onChange: (value: string) => void;
   placeholder?: string;
   required?: boolean;
-  value: string;
+  type?: string;
+  value: string | null | undefined;
 }) {
+  const normalizedValue = value ?? "";
+
   return (
     <label className={cn("grid min-w-0 gap-1.5 text-sm sm:gap-2", className)}>
       <span className="truncate text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground sm:text-xs sm:tracking-[0.12em]">
@@ -814,15 +1030,41 @@ function TextField({
         {required ? " *" : ""}
       </span>
       <input
-        className="h-10 min-w-0 border border-border bg-background px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary focus:ring-2 focus:ring-primary/15 sm:h-11"
+        autoComplete={autoComplete}
+        className={cn(
+          "h-10 min-w-0 border border-border bg-background px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary focus:ring-2 focus:ring-primary/15 sm:h-11",
+          disabled ? "cursor-not-allowed bg-muted/20 text-muted-foreground" : "",
+          error ? "border-destructive focus:border-destructive focus:ring-destructive/15" : "",
+        )}
+        disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         required={required}
-        type="text"
-        value={value}
+        type={type}
+        value={normalizedValue}
       />
+      {hint ? <span className="text-xs leading-5 text-muted-foreground">{hint}</span> : null}
+      {error ? <span className="text-xs leading-5 text-destructive">{error}</span> : null}
     </label>
   );
+}
+
+function formatDateForInput(value: string | null) {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return date.toISOString().slice(0, 10);
+}
+
+function toIsoDate(value: string) {
+  return new Date(`${value}T00:00:00.000Z`).toISOString();
 }
 
 function normalizeSearchText(value: string) {

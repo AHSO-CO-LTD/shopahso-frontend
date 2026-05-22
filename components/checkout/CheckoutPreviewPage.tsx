@@ -11,7 +11,7 @@ import { CheckoutSummary } from "@/components/checkout/CheckoutSummary";
 import { Button } from "@/components/ui/button";
 import { previewCheckout } from "@/lib/api/services/checkout.service";
 import type { CheckoutPreview } from "@/lib/checkout/types";
-import { setStoredCheckoutItemIds, setStoredCheckoutPreview } from "@/lib/checkout/storage";
+import { getStoredCheckoutItemIds, setStoredCheckoutItemIds, setStoredCheckoutPreview } from "@/lib/checkout/storage";
 
 export function CheckoutPreviewPage() {
   const router = useRouter();
@@ -19,7 +19,25 @@ export function CheckoutPreviewPage() {
   const [preview, setPreview] = useState<CheckoutPreview | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
-  const cartItemIds = useMemo(() => cart?.items.map((item) => item.id) ?? [], [cart]);
+  const cartItemIds = useMemo(() => {
+    if (!cart) {
+      return [];
+    }
+
+    const currentCartItemIds = new Set(cart.items.map((item) => item.id));
+    return getStoredCheckoutItemIds().filter((itemId) => currentCartItemIds.has(itemId));
+  }, [cart]);
+  const selectedCartItems = useMemo(() => {
+    if (!cart) {
+      return [];
+    }
+
+    return cart.items.filter((item) => cartItemIds.includes(item.id));
+  }, [cart, cartItemIds]);
+  const selectedCartQuantitySignature = useMemo(
+    () => selectedCartItems.map((item) => `${item.id}:${item.quantity}`).join("|"),
+    [selectedCartItems],
+  );
 
   async function loadPreview() {
     if (cartItemIds.length === 0) {
@@ -51,7 +69,7 @@ export function CheckoutPreviewPage() {
 
     return () => window.clearTimeout(timeoutId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cartItemIds.join("|")]);
+  }, [selectedCartQuantitySignature]);
 
   if (isCartLoading && !cart) {
     return <div className="border border-border p-5 text-sm text-muted-foreground">Đang tải giỏ hàng...</div>;
@@ -64,6 +82,18 @@ export function CheckoutPreviewPage() {
         <p className="mt-2 text-sm text-muted-foreground">Bạn cần thêm sản phẩm trước khi checkout.</p>
         <Button asChild className="mt-5 h-10 px-4">
           <Link href="/san-pham">Xem sản phẩm</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  if (cartItemIds.length === 0) {
+    return (
+      <div className="border border-border bg-background p-8 text-center">
+        <h1 className="text-2xl font-black tracking-tight">Chưa chọn sản phẩm checkout</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Vui lòng quay lại giỏ hàng và chọn sản phẩm cần đặt.</p>
+        <Button asChild className="mt-5 h-10 px-4">
+          <Link href="/gio-hang">Quay lại giỏ hàng</Link>
         </Button>
       </div>
     );
@@ -97,7 +127,7 @@ export function CheckoutPreviewPage() {
         ) : null}
 
         <div className="grid gap-3">
-          {cart.items.map((item) => (
+          {selectedCartItems.map((item) => (
             <CartLineItem key={item.id} item={item} />
           ))}
         </div>
