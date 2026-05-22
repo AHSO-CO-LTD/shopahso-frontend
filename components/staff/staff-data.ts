@@ -1,4 +1,4 @@
-import { Boxes, CreditCard, Percent, ShoppingCart, Tags, Users } from "lucide-react";
+import { Boxes, ClipboardList, ShoppingCart, Tags, Users } from "lucide-react";
 
 export const staffNavigation = [
   {
@@ -12,6 +12,11 @@ export const staffNavigation = [
     href: "/nhan-vien/nguoi-dung",
   },
   {
+    icon: ClipboardList,
+    label: "Đơn hàng",
+    href: "/nhan-vien/don-hang",
+  },
+  {
     icon: Boxes,
     label: "Danh mục",
     href: "/nhan-vien/danh-muc",
@@ -20,16 +25,6 @@ export const staffNavigation = [
     icon: Tags,
     label: "Thương hiệu",
     href: "/nhan-vien/thuong-hieu",
-  },
-  {
-    icon: Percent,
-    label: "Thuế",
-    href: "/nhan-vien/thue",
-  },
-  {
-    icon: CreditCard,
-    label: "Thanh toán",
-    href: "/nhan-vien/thanh-toan",
   },
 ];
 

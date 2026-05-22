@@ -1,10 +1,5 @@
-import { TaxSettingManager } from "@/components/backoffice/tax/TaxSettingManager";
-import StaffLayout from "@/components/staff/StaffLayout";
+import { redirect } from "next/navigation";
 
 export default function StaffTaxSettingsPage() {
-  return (
-    <StaffLayout>
-      <TaxSettingManager surface="staff" />
-    </StaffLayout>
-  );
+  redirect("/admin/thue");
 }

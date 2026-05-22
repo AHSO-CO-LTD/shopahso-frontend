@@ -1,10 +1,5 @@
-import { PaymentSettingManager } from "@/components/backoffice/payment/PaymentSettingManager";
-import StaffLayout from "@/components/staff/StaffLayout";
+import { redirect } from "next/navigation";
 
 export default function StaffPaymentSettingsPage() {
-  return (
-    <StaffLayout>
-      <PaymentSettingManager surface="staff" />
-    </StaffLayout>
-  );
+  redirect("/admin/thanh-toan");
 }

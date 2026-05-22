@@ -26,7 +26,7 @@ export default function AdminSidebar({
       {isMobileOpen ? (
         <button
           aria-label="Đóng menu quản trị"
-          className="fixed inset-0 z-30 bg-foreground/18 lg:hidden"
+          className="fixed inset-0 z-30 cursor-pointer bg-foreground/18 lg:hidden"
           onClick={onCloseMobile}
           type="button"
         />
@@ -47,13 +47,15 @@ export default function AdminSidebar({
                   Quản trị
                 </p>
                 <h2 className="mt-2 text-lg font-black tracking-tight">ShopAHSO Admin</h2>
-                <p className="mt-1 text-xs text-muted-foreground">Giám sát tài khoản và phân quyền</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Quản lý cấu hình, tài khoản và vận hành hệ thống
+                </p>
               </div>
 
               <div className="flex shrink-0 items-center gap-2">
                 <Button
                   aria-label={isSidebarCollapsed ? "Mở rộng sidebar" : "Thu gọn sidebar"}
-                  className="size-10 px-0"
+                  className="size-10 cursor-pointer px-0"
                   onClick={onToggleCollapse}
                   type="button"
                   variant="outline"
@@ -66,7 +68,7 @@ export default function AdminSidebar({
                 </Button>
                 <Button
                   aria-label="Đóng menu quản trị"
-                  className="size-10 px-0 lg:hidden"
+                  className="size-10 cursor-pointer px-0 lg:hidden"
                   onClick={onCloseMobile}
                   type="button"
                   variant="outline"
@@ -86,10 +88,10 @@ export default function AdminSidebar({
                 <Link
                   key={item.href}
                   className={[
-                    "flex w-full items-center gap-3 border px-3 py-3 text-left text-sm transition-colors",
+                    "flex w-full cursor-pointer items-center gap-3 border px-3 py-3 text-left text-sm transition-colors",
                     isActive
                       ? "border-primary bg-background font-semibold text-foreground"
-                      : "border-border text-muted-foreground hover:bg-background",
+                      : "border-border text-muted-foreground hover:bg-background hover:text-foreground",
                     isSidebarCollapsed ? "justify-center" : "",
                   ].join(" ")}
                   href={item.href}

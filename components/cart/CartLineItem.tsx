@@ -8,7 +8,19 @@ import { useCart } from "@/components/cart/CartProvider";
 import { formatCartMoney, formatTaxSource } from "@/components/cart/cart-format";
 import type { CartItem } from "@/lib/cart/types";
 
-export function CartLineItem({ item, compact = false }: { item: CartItem; compact?: boolean }) {
+export function CartLineItem({
+  compact = false,
+  isSelected = true,
+  item,
+  onSelectedChange,
+  selectable = false,
+}: {
+  compact?: boolean;
+  isSelected?: boolean;
+  item: CartItem;
+  onSelectedChange?: (itemId: string, selected: boolean) => void;
+  selectable?: boolean;
+}) {
   const { isMutating, removeItem, updateQuantity } = useCart();
   const minQuantity = item.minOrderQuantity;
   const maxQuantity = item.stockQuantity;
@@ -34,7 +46,24 @@ export function CartLineItem({ item, compact = false }: { item: CartItem; compac
   }
 
   return (
-    <article className="grid grid-cols-[88px_minmax(0,1fr)] gap-4 border border-border bg-background p-3">
+    <article
+      className={[
+        "grid gap-3 border border-border bg-background p-3 sm:gap-4",
+        selectable ? "grid-cols-[auto_88px_minmax(0,1fr)]" : "grid-cols-[88px_minmax(0,1fr)]",
+      ].join(" ")}
+    >
+      {selectable ? (
+        <label className="mt-1 inline-flex size-8 cursor-pointer items-center justify-center border border-border transition-colors hover:border-primary hover:bg-muted/30 has-disabled:cursor-not-allowed has-disabled:opacity-50">
+          <input
+            aria-label={`Chọn ${item.variant.name}`}
+            checked={isSelected}
+            className="size-4 cursor-pointer accent-primary disabled:cursor-not-allowed"
+            disabled={!item.available}
+            onChange={(event) => onSelectedChange?.(item.id, event.currentTarget.checked)}
+            type="checkbox"
+          />
+        </label>
+      ) : null}
       <Link
         href={`/san-pham/${item.variant.slug}`}
         className="relative aspect-square overflow-hidden border border-border bg-muted/20"

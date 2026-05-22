@@ -118,6 +118,10 @@ export type CheckoutOrder = {
   paymentBankAccountName?: string | null;
   paymentQrUrl: string | null;
   paymentTransferContent: string | null;
+  paymentRejectReason?: string | null;
+  staffNote?: string | null;
+  cancelledAt?: string | null;
+  completedAt?: string | null;
   items: CheckoutOrderItem[];
   shippingAddress?: UserAddress | CheckoutShippingAddress | null;
   createdAt?: string;

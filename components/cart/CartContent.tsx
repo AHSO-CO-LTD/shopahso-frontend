@@ -1,14 +1,39 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo, useState } from "react";
 import { RefreshCw, ShoppingCart } from "lucide-react";
 import { useCart } from "@/components/cart/CartProvider";
 import { CartLineItem } from "@/components/cart/CartLineItem";
 import { CartSummaryPanel } from "@/components/cart/CartSummaryPanel";
+import { buildCartSummaryFromItems, getAvailableCartItemIds, getSelectedCartItems } from "@/components/cart/cart-selection";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function CartContent({ compact = false }: { compact?: boolean }) {
   const { cart, errorMessage, isLoading, refreshCart } = useCart();
+  const [selectedItemIdsDraft, setSelectedItemIdsDraft] = useState<string[]>([]);
+  const availableItemIds = useMemo(() => (cart ? getAvailableCartItemIds(cart) : []), [cart]);
+  const selectedItemIds = useMemo(
+    () => selectedItemIdsDraft.filter((itemId) => availableItemIds.includes(itemId)),
+    [availableItemIds, selectedItemIdsDraft],
+  );
+  const selectedItems = useMemo(() => (cart ? getSelectedCartItems(cart, selectedItemIds) : []), [cart, selectedItemIds]);
+  const selectedSummary = useMemo(() => buildCartSummaryFromItems(selectedItems), [selectedItems]);
+  const isAllAvailableSelected = availableItemIds.length > 0 && availableItemIds.every((itemId) => selectedItemIds.includes(itemId));
+
+  function updateSelectedItem(itemId: string, selected: boolean) {
+    setSelectedItemIdsDraft((current) => {
+      if (selected) {
+        return current.includes(itemId) ? current : [...current, itemId];
+      }
+
+      return current.filter((currentItemId) => currentItemId !== itemId);
+    });
+  }
+
+  function toggleAllAvailableItems() {
+    setSelectedItemIdsDraft(isAllAvailableSelected ? [] : availableItemIds);
+  }
 
   if (isLoading && !cart) {
     return <CartContentSkeleton compact={compact} />;
@@ -53,10 +78,23 @@ export function CartContent({ compact = false }: { compact?: boolean }) {
       <div className="grid gap-4">
         <div className="grid max-h-[48dvh] gap-3 overflow-y-auto pr-1">
           {cart.items.map((item) => (
-            <CartLineItem key={item.id} item={item} compact />
+            <CartLineItem
+              key={item.id}
+              item={item}
+              compact
+              isSelected={selectedItemIds.includes(item.id)}
+              onSelectedChange={updateSelectedItem}
+              selectable
+            />
           ))}
         </div>
-        <CartSummaryPanel cart={cart} showCartLink />
+        <CartSummaryPanel
+          cart={cart}
+          selectedItemIds={selectedItemIds}
+          selectedItems={selectedItems}
+          selectedSummary={selectedSummary}
+          showCartLink
+        />
       </div>
     );
   }
@@ -64,11 +102,32 @@ export function CartContent({ compact = false }: { compact?: boolean }) {
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
       <section className="grid content-start gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border border-border bg-background p-3">
+          <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-semibold">
+            <input
+              checked={isAllAvailableSelected}
+              className="size-4 cursor-pointer accent-primary disabled:cursor-not-allowed"
+              disabled={availableItemIds.length === 0}
+              onChange={toggleAllAvailableItems}
+              type="checkbox"
+            />
+            Chọn tất cả sản phẩm khả dụng
+          </label>
+          <p className="text-xs font-semibold text-muted-foreground">
+            Đã chọn {selectedItems.length}/{cart.items.length} dòng sản phẩm
+          </p>
+        </div>
         {cart.items.map((item) => (
-          <CartLineItem key={item.id} item={item} />
+          <CartLineItem
+            key={item.id}
+            item={item}
+            isSelected={selectedItemIds.includes(item.id)}
+            onSelectedChange={updateSelectedItem}
+            selectable
+          />
         ))}
       </section>
-      <CartSummaryPanel cart={cart} />
+      <CartSummaryPanel cart={cart} selectedItemIds={selectedItemIds} selectedItems={selectedItems} selectedSummary={selectedSummary} />
     </div>
   );
 }

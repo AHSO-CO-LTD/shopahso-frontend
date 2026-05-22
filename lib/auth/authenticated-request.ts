@@ -11,6 +11,11 @@ function withAccessToken(headers: HeadersInit | undefined, accessToken: string) 
   return nextHeaders;
 }
 
+function expireAuthSession(path: string): never {
+  clearStoredAuthTokens();
+  throw new ApiError("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.", 401, path);
+}
+
 async function refreshTokensOnce() {
   if (!refreshTokensPromise) {
     const currentTokens = getStoredAuthTokens();
@@ -62,7 +67,10 @@ export async function authenticatedApiRequest<T>(path: string, options: ApiReque
         headers: withAccessToken(options.headers, refreshedTokens.accessToken),
       });
     } catch (refreshError) {
-      clearStoredAuthTokens();
+      if (refreshError instanceof ApiError && refreshError.status === 401) {
+        expireAuthSession(path);
+      }
+
       throw refreshError;
     }
   }

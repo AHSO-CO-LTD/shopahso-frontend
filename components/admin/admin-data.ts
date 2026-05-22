@@ -1,25 +1,30 @@
-import { BarChart3, CreditCard, Percent, ShieldCheck } from "lucide-react";
+import { BarChart3, CreditCard, Mail, Percent, ShieldCheck } from "lucide-react";
 
 export const adminNavigation = [
   {
     icon: BarChart3,
-    label: "Tong quan",
+    label: "Tổng quan",
     href: "/admin",
   },
   {
     icon: ShieldCheck,
-    label: "Tai khoan",
+    label: "Tài khoản",
     href: "/admin/tai-khoan",
   },
   {
     icon: Percent,
-    label: "Thue",
+    label: "Thuế",
     href: "/admin/thue",
   },
   {
     icon: CreditCard,
-    label: "Thanh toan",
+    label: "Thanh toán",
     href: "/admin/thanh-toan",
+  },
+  {
+    icon: Mail,
+    label: "Email",
+    href: "/admin/email",
   },
 ];
 
