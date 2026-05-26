@@ -7,6 +7,7 @@ export type CheckoutIssueCode =
   | "OUT_OF_STOCK"
   | "QUANTITY_EXCEEDS_STOCK"
   | "QUANTITY_BELOW_MIN_ORDER"
+  | "CONTACT_FOR_PRICE"
   | "PRICE_CHANGED";
 
 export type CheckoutIssue = {
@@ -14,6 +15,12 @@ export type CheckoutIssue = {
   message?: string;
   cartItemId?: string;
   variantId?: string;
+  severity?: "error" | "warning" | "info" | string;
+};
+
+export type CheckoutPreviewItem = CartItem & {
+  cartItemId?: string;
+  issues?: CheckoutIssue[];
 };
 
 export type CheckoutPreviewSummary = {
@@ -28,10 +35,10 @@ export type CheckoutPreviewSummary = {
 
 export type CheckoutPreview = {
   canCheckout: boolean;
-  items: CartItem[];
+  items: CheckoutPreviewItem[];
   issues?: CheckoutIssue[];
   voucher: unknown | null;
-  summary: CheckoutPreviewSummary;
+  summary?: CheckoutPreviewSummary;
 };
 
 export type CheckoutShippingAddress = {

@@ -8,12 +8,14 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { listCatalogNewestProducts } from "@/lib/api/services/catalog-variants.service";
 import { formatCatalogMoney, getCatalogPricingDisplay } from "@/lib/catalog/pricing";
 import type { CatalogFeaturedProduct } from "@/lib/catalog/types";
+import { FALLBACK_LOGO_IMAGE } from "@/lib/image-fallbacks";
 
 gsap.registerPlugin(ScrollTrigger);
 
 function ArrivalCard({ product }: { product: CatalogFeaturedProduct }) {
   const topVariant = product.variants[0];
-  const imageUrl = product.effectiveImageUrls?.[0];
+  const imageUrl = product.effectiveImageUrls?.[0] ?? FALLBACK_LOGO_IMAGE;
+  const isFallbackImage = imageUrl === FALLBACK_LOGO_IMAGE;
   const pricing = topVariant?.pricing
     ? getCatalogPricingDisplay({
         fallbackPrice: topVariant.pricing.totalWithTax,
@@ -30,25 +32,13 @@ function ArrivalCard({ product }: { product: CatalogFeaturedProduct }) {
   return (
     <div className="group w-72 shrink-0 cursor-pointer border border-border bg-white transition-colors hover:border-primary">
       <div className="industrial-grid relative h-48 w-full bg-muted">
-        {imageUrl ? (
-          <Image src={imageUrl} alt={product.name} fill className="object-cover" sizes="288px" />
-        ) : (
-          <div className="flex h-full items-center justify-center">
-            <svg
-              width="32"
-              height="32"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              className="text-border"
-            >
-              <rect x="3" y="3" width="18" height="18" rx="0" />
-              <circle cx="8.5" cy="8.5" r="1.5" />
-              <polyline points="21 15 16 10 5 21" />
-            </svg>
-          </div>
-        )}
+        <Image
+          src={imageUrl}
+          alt={product.name}
+          fill
+          className={isFallbackImage ? "object-contain p-8" : "object-cover"}
+          sizes="288px"
+        />
         <div className="absolute top-3 left-3 bg-primary px-2.5 py-1 font-mono text-[9px] font-bold tracking-[0.18em] text-white uppercase">
           MỚI
         </div>

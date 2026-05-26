@@ -2,11 +2,13 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { listCatalogFeaturedBrands } from "@/lib/api/services/catalog-variants.service";
 import type { CatalogFeaturedBrand } from "@/lib/catalog/types";
+import { FALLBACK_LOGO_IMAGE } from "@/lib/image-fallbacks";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -57,7 +59,7 @@ const FeaturedBrands = () => {
       <div className="container mx-auto px-4">
         <div className="mb-10 flex items-end justify-between">
           <div>
-            <div className="mb-2 font-mono text-[10px] tracking-[0.25em] text-muted-foreground uppercase">
+            <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
               PARTNERS / BRANDS
             </div>
             <h2 className="text-3xl font-black tracking-tight">
@@ -75,39 +77,41 @@ const FeaturedBrands = () => {
             Chưa có thương hiệu nổi bật.
           </div>
         ) : (
-          <div
-            ref={rowRef}
-            className="grid grid-cols-2 gap-0 border border-border sm:grid-cols-3 lg:grid-cols-5"
-          >
+          <div ref={rowRef} className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
             {brands.map((brand) => (
               <Link
                 key={brand.id}
                 href={`/thuong-hieu/${brand.slug}`}
-                className="group flex aspect-square cursor-pointer flex-col items-center justify-center gap-3 border-r border-b border-border bg-white p-4 transition-colors hover:bg-primary last:border-r-0"
+                className="group flex min-h-48 cursor-pointer flex-col border border-border bg-white transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-primary hover:shadow-[0_10px_24px_rgba(15,23,42,0.12)] focus-visible:border-primary focus-visible:outline-none"
                 title={brand.name}
               >
-                <div className="relative h-12 w-28">
-                  {brand.logoUrl ? (
+                <div className="flex h-24 items-center justify-center border-b border-border bg-muted/10 px-4 transition-colors group-hover:bg-muted/20">
+                  <div className="relative h-12 w-full max-w-32">
                     <Image
-                      src={brand.logoUrl}
+                      src={brand.logoUrl ?? FALLBACK_LOGO_IMAGE}
                       alt={brand.name}
                       fill
                       className="object-contain"
-                      sizes="112px"
+                      sizes="128px"
                     />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center border border-border font-mono text-[10px] tracking-wider text-muted-foreground transition-colors group-hover:border-white/50 group-hover:text-white/70">
-                      NO LOGO
-                    </div>
-                  )}
+                  </div>
                 </div>
-                <div className="text-center">
-                  <p className="line-clamp-1 text-sm font-semibold transition-colors group-hover:text-white">
+                <div className="flex flex-1 flex-col px-4 py-3">
+                  <p className="line-clamp-2 text-sm font-black leading-tight transition-colors group-hover:text-primary">
                     {brand.name}
                   </p>
-                  <p className="font-mono text-[10px] tracking-wider text-muted-foreground transition-colors group-hover:text-white/70">
-                    {brand.featuredOrderCount} đơn · {brand.featuredVariantCount} biến thể
-                  </p>
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
+                    <span className="border border-border bg-muted/20 px-2 py-1 font-mono text-muted-foreground">
+                      {brand.featuredVariantCount} biến thể
+                    </span>
+                    <span className="border border-border bg-muted/20 px-2 py-1 font-mono text-muted-foreground">
+                      {brand.featuredOrderCount} đơn
+                    </span>
+                  </div>
+                  <div className="mt-auto flex items-center justify-between pt-3 text-xs font-semibold transition-colors group-hover:text-primary">
+                    <span>Xem thương hiệu</span>
+                    <ArrowUpRight className="size-4" aria-hidden="true" />
+                  </div>
                 </div>
               </Link>
             ))}

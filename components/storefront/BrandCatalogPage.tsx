@@ -2,9 +2,11 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { listCatalogBrands } from "@/lib/api/services/catalog-variants.service";
 import type { Brand } from "@/lib/brand/types";
+import { FALLBACK_LOGO_IMAGE } from "@/lib/image-fallbacks";
 
 export default function BrandCatalogPage() {
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -35,7 +37,9 @@ export default function BrandCatalogPage() {
         <header className="mb-8">
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Thương hiệu</p>
           <h1 className="mt-2 text-3xl font-black tracking-tight lg:text-4xl">Thương hiệu công nghiệp</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Duyệt theo thương hiệu để xem toàn bộ biến thể đang mở bán.</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Duyệt theo thương hiệu để xem toàn bộ biến thể đang mở bán.
+          </p>
         </header>
 
         {isLoading ? (
@@ -45,31 +49,37 @@ export default function BrandCatalogPage() {
         ) : brands.length === 0 ? (
           <div className="border border-border p-8 text-sm text-muted-foreground">Hiện chưa có thương hiệu nào.</div>
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {brands.map((brand) => (
-              <article key={brand.id} className="flex flex-col border border-border bg-background">
-                <div className="flex h-32 items-center justify-center border-b border-border bg-muted/15 px-4">
-                  {brand.logoUrl ? (
-                    <div className="relative h-14 w-full max-w-[180px]">
-                      <Image alt={`Logo ${brand.name}`} className="object-contain" fill sizes="180px" src={brand.logoUrl} />
-                    </div>
-                  ) : (
-                    <p className="text-center text-sm font-semibold text-muted-foreground">Chưa có logo</p>
-                  )}
+              <Link
+                key={brand.id}
+                aria-label={`Xem sản phẩm thương hiệu ${brand.name}`}
+                className="group flex min-h-56 cursor-pointer flex-col border border-border bg-background transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-primary hover:shadow-[0_10px_24px_rgba(15,23,42,0.12)] focus-visible:border-primary focus-visible:outline-none"
+                href={`/thuong-hieu/${brand.slug}`}
+              >
+                <div className="flex h-32 items-center justify-center border-b border-border bg-muted/10 px-5 transition-colors group-hover:bg-muted/20">
+                  <div className="relative h-16 w-full max-w-[190px]">
+                    <Image
+                      alt={`Logo ${brand.name}`}
+                      className="object-contain"
+                      fill
+                      sizes="190px"
+                      src={brand.logoUrl ?? FALLBACK_LOGO_IMAGE}
+                    />
+                  </div>
                 </div>
-                <div className="flex flex-1 flex-col gap-2 px-4 py-4">
-                  <h2 className="truncate text-lg font-black tracking-tight">{brand.name}</h2>
-                  <p className="truncate text-xs text-muted-foreground">slug: {brand.slug}</p>
+                <div className="flex flex-1 flex-col px-4 py-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Thương hiệu</p>
+                  <h2 className="mt-2 line-clamp-2 text-lg font-black leading-tight tracking-tight transition-colors group-hover:text-primary">
+                    {brand.name}
+                  </h2>
+                  <p className="mt-2 truncate font-mono text-xs text-muted-foreground">{brand.slug}</p>
                 </div>
-                <div className="border-t border-border px-4 py-3">
-                  <Link
-                    href={`/thuong-hieu/${brand.slug}`}
-                    className="inline-flex h-9 w-full items-center justify-center border border-border px-3 text-sm font-semibold transition-colors hover:border-primary hover:text-primary"
-                  >
-                    Xem sản phẩm của thương hiệu
-                  </Link>
+                <div className="flex h-11 items-center justify-between border-t border-border px-4 text-sm font-semibold transition-colors group-hover:border-primary group-hover:text-primary">
+                  <span>Xem sản phẩm</span>
+                  <ArrowUpRight className="size-4" aria-hidden="true" />
                 </div>
-              </article>
+              </Link>
             ))}
           </div>
         )}

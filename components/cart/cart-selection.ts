@@ -1,4 +1,5 @@
 import type { Cart, CartItem, CartSummary } from "@/lib/cart/types";
+import { isContactForPrice } from "@/lib/pricing-status";
 
 function toNumber(value: string | number | null | undefined) {
   const numericValue = Number(value ?? 0);
@@ -6,7 +7,9 @@ function toNumber(value: string | number | null | undefined) {
 }
 
 export function getAvailableCartItemIds(cart: Cart) {
-  return cart.items.filter((item) => item.available).map((item) => item.id);
+  return cart.items
+    .filter((item) => item.available && !isContactForPrice(item.current.pricingStatus ?? item.variant.pricingStatus))
+    .map((item) => item.id);
 }
 
 export function getSelectedCartItems(cart: Cart, selectedItemIds: string[]) {

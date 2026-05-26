@@ -8,6 +8,7 @@ import StaffLayout from "@/components/staff/StaffLayout";
 import { Button } from "@/components/ui/button";
 import { getBackofficeProduct } from "@/lib/api/services/products.service";
 import { deleteBackofficeVariant } from "@/lib/api/services/variants.service";
+import { getPricingStatusBadgeClass, getPricingStatusLabel } from "@/lib/pricing-status";
 import type { ProductDetail, VariantSummary } from "@/lib/product/types";
 
 export default function StaffProductVariantList({ productId }: { productId: string }) {
@@ -115,6 +116,10 @@ export default function StaffProductVariantList({ productId }: { productId: stri
                       <p className="truncate text-xs text-muted-foreground">SKU: {variant.sku}</p>
                       <p className="truncate text-xs text-muted-foreground">Slug: {variant.slug}</p>
                       <p className="truncate text-xs text-muted-foreground">MPN: {variant.manufacturerPartNumber || "Chưa có"}</p>
+                      <p className="truncate text-xs text-muted-foreground">Xuất xứ: {variant.originCountryCode ?? "Chưa có"}</p>
+                      <span className={`mt-2 inline-flex border px-2 py-1 text-[11px] font-semibold ${getPricingStatusBadgeClass(variant.pricingStatus)}`}>
+                        {getPricingStatusLabel(variant.pricingStatus)}
+                      </span>
                       <p className="truncate text-xs text-muted-foreground">
                         Giá bán: {variant.price} | Giá nhập: {variant.costPrice ?? "Theo giá bán"} | Giá sau giảm: {variant.salePrice ?? "N/A"}
                       </p>

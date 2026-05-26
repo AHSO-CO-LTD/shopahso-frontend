@@ -8,6 +8,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { listCatalogFeaturedProducts } from "@/lib/api/services/catalog-variants.service";
 import { formatCatalogMoney, getCatalogPricingDisplay } from "@/lib/catalog/pricing";
 import type { CatalogFeaturedProduct } from "@/lib/catalog/types";
+import { FALLBACK_LOGO_IMAGE } from "@/lib/image-fallbacks";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -16,7 +17,8 @@ function ProductCard({ product, large = false }: { product: CatalogFeaturedProdu
   const partNumber = topVariant?.sku ?? "Đang cập nhật";
   const brandName = product.brand?.name ?? "Không gắn thương hiệu";
   const categoryName = product.category?.name ?? "Danh mục";
-  const imageUrl = product.effectiveImageUrls?.[0];
+  const imageUrl = product.effectiveImageUrls?.[0] ?? FALLBACK_LOGO_IMAGE;
+  const isFallbackImage = imageUrl === FALLBACK_LOGO_IMAGE;
   const pricing = topVariant?.pricing
     ? getCatalogPricingDisplay({
         fallbackPrice: topVariant.pricing.totalWithTax,
@@ -36,20 +38,13 @@ function ProductCard({ product, large = false }: { product: CatalogFeaturedProdu
           large ? "h-72 lg:h-auto lg:flex-1" : "h-44"
         }`}
       >
-        {imageUrl ? (
-          <Image src={imageUrl} alt={product.name} fill className="object-cover" sizes="(max-width: 1024px) 100vw, 33vw" />
-        ) : (
-          <div className="flex h-full items-center justify-center">
-            <div className="flex flex-col items-center gap-2 text-border">
-              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <rect x="3" y="3" width="18" height="18" rx="0" />
-                <circle cx="8.5" cy="8.5" r="1.5" />
-                <polyline points="21 15 16 10 5 21" />
-              </svg>
-              <span className="font-mono text-[9px] tracking-widest uppercase">No Image</span>
-            </div>
-          </div>
-        )}
+        <Image
+          src={imageUrl}
+          alt={product.name}
+          fill
+          className={isFallbackImage ? "object-contain p-8" : "object-cover"}
+          sizes="(max-width: 1024px) 100vw, 33vw"
+        />
       </div>
 
       <div className="flex flex-col gap-2 p-5">

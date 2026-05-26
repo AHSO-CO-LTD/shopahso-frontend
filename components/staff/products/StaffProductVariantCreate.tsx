@@ -10,6 +10,7 @@ import VariantForm, { DEFAULT_VARIANT_FORM_VALUE } from "@/components/staff/prod
 import { Button } from "@/components/ui/button";
 import { getBackofficeProduct } from "@/lib/api/services/products.service";
 import { createBackofficeVariant, uploadBackofficeVariantImage } from "@/lib/api/services/variants.service";
+import { getPricingStatusBadgeClass, getPricingStatusLabel } from "@/lib/pricing-status";
 import type { CreateVariantPayload, ProductDetail } from "@/lib/product/types";
 
 export default function StaffProductVariantCreate({ productId }: { productId: string }) {
@@ -128,6 +129,10 @@ export default function StaffProductVariantCreate({ productId }: { productId: st
                         <div className="min-w-0">
                           <p className="truncate font-semibold">{variant.name}</p>
                           <p className="truncate text-xs text-muted-foreground">SKU: {variant.sku} | Slug: {variant.slug}</p>
+                          <p className="truncate text-xs text-muted-foreground">Xuất xứ: {variant.originCountryCode ?? "Chưa có"}</p>
+                          <span className={`mt-2 inline-flex border px-2 py-1 text-[11px] font-semibold ${getPricingStatusBadgeClass(variant.pricingStatus)}`}>
+                            {getPricingStatusLabel(variant.pricingStatus)}
+                          </span>
                           <p className="truncate text-xs text-muted-foreground">
                             Giá bán: {variant.price} | Giá sau giảm: {variant.salePrice ?? "N/A"} | Tồn kho: {variant.stockQuantity}
                           </p>

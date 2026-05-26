@@ -132,6 +132,9 @@ export function CheckoutShippingPage() {
     if (cartItemIds.length === 0) {
       return "Không tìm thấy sản phẩm checkout. Vui lòng quay lại giỏ hàng.";
     }
+    if (!preview?.canCheckout) {
+      return "Có sản phẩm chưa thể checkout. Vui lòng quay lại bước xem trước để kiểm tra.";
+    }
     if (!form.customerName.trim()) {
       return "Vui lòng nhập tên người nhận.";
     }
@@ -344,7 +347,7 @@ export function CheckoutShippingPage() {
       </section>
 
       <aside className="space-y-3">
-        <CheckoutSummary summary={preview.summary} />
+        {preview.summary ? <CheckoutSummary summary={preview.summary} /> : null}
         <Button className="h-11 w-full text-sm font-semibold" disabled={isSubmitting} type="submit">
           Tạo đơn và thanh toán
           <ArrowRight className="size-4" />

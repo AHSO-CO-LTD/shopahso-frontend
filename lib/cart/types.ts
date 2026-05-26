@@ -1,3 +1,5 @@
+import type { PricingStatus } from "@/lib/pricing-status";
+
 export type CartProduct = {
   id: string;
   name: string;
@@ -9,6 +11,8 @@ export type CartVariant = {
   name: string;
   slug: string;
   sku: string;
+  originCountryCode?: string | null;
+  pricingStatus?: PricingStatus;
   unit: string | null;
   imageUrls: string[];
 };
@@ -18,6 +22,7 @@ export type CartPriceSnapshot = {
   variantName: string;
   price: string;
   salePrice: string | null;
+  pricingStatus?: PricingStatus;
   effectivePrice: string;
   imageUrl: string | null;
   subtotal: string;
@@ -26,6 +31,7 @@ export type CartPriceSnapshot = {
 export type CartCurrentPrice = {
   price: string;
   salePrice: string | null;
+  pricingStatus?: PricingStatus;
   effectivePrice: string;
   subtotal: string;
   tax?: {

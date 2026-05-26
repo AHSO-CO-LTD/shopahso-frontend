@@ -1,4 +1,5 @@
 import { authenticatedApiRequest } from "@/lib/auth/authenticated-request";
+import type { PricingStatus } from "@/lib/pricing-status";
 import type {
   CreateVariantPayload,
   UpdateVariantPayload,
@@ -13,11 +14,15 @@ export type VariantImportPreviewError = {
 
 export type VariantImportPreviewRow = {
   rowNumber: number;
+  no?: string;
   variantName: string;
   sku: string;
   slug: string;
   price: string;
   costPrice: string;
+  pricingStatus: PricingStatus;
+  originCountryCode?: string | null;
+  originCountryName?: string | null;
   stockQuantity: number;
   unit: string;
 };
@@ -38,6 +43,7 @@ export type VariantImportCommitItem = {
   name: string;
   sku: string;
   slug: string;
+  pricingStatus: PricingStatus;
 };
 
 export type VariantImportCommitResponse = {

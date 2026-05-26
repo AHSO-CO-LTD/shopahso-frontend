@@ -53,7 +53,9 @@ export function CheckoutPreviewPage() {
       setStoredCheckoutPreview(response);
 
       if (!response.canCheckout) {
-        toast.warning("Có sản phẩm cần kiểm tra trước khi đặt hàng.");
+        const hasQuoteIssue = response.items?.some((item) => item.issues?.some((issue) => issue.code === "CONTACT_FOR_PRICE"))
+          || response.issues?.some((issue) => issue.code === "CONTACT_FOR_PRICE");
+        toast.warning(hasQuoteIssue ? "Có sản phẩm cần báo giá, chưa thể checkout trực tiếp." : "Có sản phẩm cần kiểm tra trước khi đặt hàng.");
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Không thể tạo bản xem trước đơn hàng.");
@@ -126,6 +128,24 @@ export function CheckoutPreviewPage() {
           </div>
         ) : null}
 
+        {preview?.items?.some((item) => item.issues?.length) ? (
+          <div className="border border-secondary bg-secondary/30 p-4 text-sm">
+            <div className="flex items-start gap-2 font-semibold">
+              <AlertTriangle className="mt-0.5 size-4" />
+              Sản phẩm chưa thể checkout
+            </div>
+            <ul className="mt-2 grid gap-1 text-muted-foreground">
+              {preview.items.flatMap((item) =>
+                (item.issues ?? []).map((issue, index) => (
+                  <li key={`${item.id ?? item.cartItemId}-${issue.code}-${index}`}>
+                    {issue.code === "CONTACT_FOR_PRICE" ? "Sản phẩm cần báo giá riêng." : issue.message ?? issue.code}
+                  </li>
+                )),
+              )}
+            </ul>
+          </div>
+        ) : null}
+
         <div className="grid gap-3">
           {selectedCartItems.map((item) => (
             <CartLineItem key={item.id} item={item} />
@@ -134,7 +154,7 @@ export function CheckoutPreviewPage() {
       </section>
 
       <aside className="space-y-3">
-        {preview ? <CheckoutSummary summary={preview.summary} /> : null}
+        {preview?.summary ? <CheckoutSummary summary={preview.summary} /> : null}
         <Button
           className="h-11 w-full text-sm font-semibold"
           disabled={!preview?.canCheckout || isLoadingPreview}
