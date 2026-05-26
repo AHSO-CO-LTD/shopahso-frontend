@@ -7,14 +7,18 @@ import { isContactForPrice, type PricingStatus } from "@/lib/pricing-status";
 
 export function AddToCartButton({
   active,
+  appearance = "default",
   className = "",
+  iconOnly = false,
   label = "Thêm vào giỏ hàng",
   pricingStatus,
   stockQuantity,
   variantId,
 }: {
   active: boolean;
+  appearance?: "default" | "attention";
   className?: string;
+  iconOnly?: boolean;
   label?: string;
   pricingStatus?: PricingStatus;
   stockQuantity: number;
@@ -24,7 +28,13 @@ export function AddToCartButton({
   const currentCartItem = cart?.items.find((item) => item.variantId === variantId);
   const requiresQuote = isContactForPrice(pricingStatus);
   const isAtMaxQuantity = Boolean(currentCartItem && currentCartItem.quantity >= stockQuantity);
-  const isDisabled = isMutating || !active || stockQuantity <= 0;
+  const isDisabled = isMutating || !active || (!requiresQuote && stockQuantity <= 0);
+  const buttonLabel = requiresQuote ? "Liên hệ báo giá" : stockQuantity <= 0 ? "Hết hàng" : isAtMaxQuantity ? "Đã tối đa" : label;
+  const buttonToneClass = requiresQuote
+    ? "border-yellow-500 bg-yellow-400 text-foreground hover:bg-yellow-500"
+    : appearance === "attention"
+      ? "border-red-700 bg-red-600 text-primary-foreground hover:bg-red-700"
+      : "border-primary bg-primary text-primary-foreground hover:bg-primary/90";
 
   function handleAddToCart() {
     if (requiresQuote) {
@@ -43,16 +53,12 @@ export function AddToCartButton({
   return (
     <button
       type="button"
-      className={`inline-flex cursor-pointer items-center justify-center gap-2 border px-3 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-        requiresQuote
-          ? "border-yellow-500 bg-yellow-400 text-foreground hover:bg-yellow-500"
-          : "border-primary bg-primary text-primary-foreground hover:bg-primary/90"
-      } ${className}`}
+      className={`inline-flex cursor-pointer items-center justify-center gap-2 border ${iconOnly ? "p-0" : "px-3"} text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${buttonToneClass} ${className}`}
       disabled={isDisabled}
       onClick={handleAddToCart}
     >
       <ShoppingCart className="size-4" />
-      {stockQuantity <= 0 ? "Hết hàng" : requiresQuote ? "Liên hệ báo giá" : isAtMaxQuantity ? "Đã tối đa" : label}
+      {iconOnly ? <span className="sr-only">{buttonLabel}</span> : buttonLabel}
     </button>
   );
 }

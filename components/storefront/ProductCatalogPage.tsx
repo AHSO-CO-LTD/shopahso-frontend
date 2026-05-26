@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -554,8 +553,8 @@ function ProductCard({
   onNavigate: (variantSlug: string, eventTarget: EventTarget | null) => void;
   variant: CatalogVariant;
 }) {
-  const isOutOfStock = variant.stockQuantity <= 0;
   const requiresQuote = isContactForPrice(variant.pricingStatus);
+  const isOutOfStock = !requiresQuote && variant.stockQuantity <= 0;
   const imageUrl = variant.effectiveImageUrls?.[0] ?? FALLBACK_LOGO_IMAGE;
   const isFallbackImage = imageUrl === FALLBACK_LOGO_IMAGE;
   const stockLabel = isOutOfStock ? "Hết hàng" : `${variant.stockQuantity} ${variant.unit ?? ""}`.trim();
@@ -579,6 +578,17 @@ function ProductCard({
       role="link"
       tabIndex={0}
     >
+      {!isOutOfStock ? (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-sky-500/0 opacity-0 transition-[background-color,opacity] duration-200 group-hover:bg-sky-500/12 group-hover:opacity-100 group-focus-visible:bg-sky-500/12 group-focus-visible:opacity-100"
+        >
+          <span className="border border-sky-700/35 bg-background/90 px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-sky-800 shadow-[0_8px_18px_rgba(15,23,42,0.10)]">
+            Xem chi tiết
+          </span>
+        </div>
+      ) : null}
+
       {isOutOfStock ? (
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-muted/35">
           <div className="-rotate-6 border-2 border-foreground/45 px-6 py-3 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.08)_inset]">
@@ -626,21 +636,21 @@ function ProductCard({
           <ProductMetaItem label="Tồn kho" value={stockLabel} />
         </div>
 
-        <div className="mt-auto pt-4">
+        <div className="mt-auto flex items-end justify-between gap-3 border-t border-border pt-4">
           <CatalogPrice variant={variant} />
+          {!requiresQuote ? (
+            <AddToCartButton
+              active={variant.active}
+              appearance="attention"
+              className="relative z-20 size-11 shrink-0"
+              iconOnly
+              label="Thêm"
+              pricingStatus={variant.pricingStatus}
+              stockQuantity={variant.stockQuantity}
+              variantId={variant.id}
+            />
+          ) : null}
         </div>
-      </div>
-
-      <div className="grid grid-cols-[0.9fr_1.1fr] gap-2 border-t border-border p-3">
-        <ButtonLink href={`/san-pham/${variant.slug}`} label="Chi tiết" />
-        <AddToCartButton
-          active={variant.active}
-          className="h-10 w-full sm:h-9"
-          label="Thêm"
-          pricingStatus={variant.pricingStatus}
-          stockQuantity={variant.stockQuantity}
-          variantId={variant.id}
-        />
       </div>
     </article>
   );
@@ -691,21 +701,10 @@ function PaginationControls({
   );
 }
 
-function ButtonLink({ href, label }: { href: string; label: string }) {
-  return (
-    <Link
-      href={href}
-      className="inline-flex h-10 w-full cursor-pointer items-center justify-center border border-border px-3 text-sm font-semibold transition-colors hover:border-primary hover:text-primary sm:h-9"
-    >
-      {label}
-    </Link>
-  );
-}
-
 function CatalogPrice({ variant }: { variant: CatalogVariant }) {
   if (isContactForPrice(variant.pricingStatus)) {
     return (
-      <div className="border-t border-border pt-3">
+      <div className="min-w-0">
         <p className="text-lg font-black text-primary">Liên hệ báo giá</p>
         <p className="mt-1 text-xs text-muted-foreground">Giá xác nhận theo số lượng và thời điểm đặt hàng.</p>
       </div>
@@ -719,7 +718,7 @@ function CatalogPrice({ variant }: { variant: CatalogVariant }) {
   });
 
   return (
-    <div className="border-t border-border pt-3">
+    <div className="min-w-0">
       <p className="text-lg font-black text-primary">{formatCatalogMoney(pricing.totalWithTax)}</p>
       <p className="text-xs text-muted-foreground">
         Đã gồm thuế {pricing.taxPercent}% ({formatCatalogMoney(pricing.taxAmount)})
