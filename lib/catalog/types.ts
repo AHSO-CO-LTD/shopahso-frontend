@@ -17,6 +17,7 @@ export type CatalogVariantProduct = {
   id: string;
   name: string;
   slug: string;
+  description?: string | null;
 };
 
 export type CatalogVariantTax = {

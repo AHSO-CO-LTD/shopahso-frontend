@@ -151,6 +151,7 @@ export default function ProductVariantDetailPage({ slug }: { slug: string }) {
   const requiresQuote = isContactForPrice(variant?.pricingStatus);
   const detailImageUrl = variant?.effectiveImageUrls?.[0] ?? FALLBACK_LOGO_IMAGE;
   const isDetailFallbackImage = detailImageUrl === FALLBACK_LOGO_IMAGE;
+  const productDescription = (variant?.product.description ?? "").trim();
 
   useEffect(() => {
     async function loadVariant() {
@@ -212,6 +213,18 @@ export default function ProductVariantDetailPage({ slug }: { slug: string }) {
               <span className={`mt-4 inline-flex border px-2 py-1 text-[11px] font-semibold ${getPricingStatusBadgeClass(variant.pricingStatus)}`}>
                 {getPricingStatusLabel(variant.pricingStatus)}
               </span>
+
+              <section className="mt-6 border border-border">
+                <div className="border-b border-border bg-muted/20 px-4 py-3">
+                  <h2 className="text-sm font-semibold">Mô tả sản phẩm</h2>
+                </div>
+                {productDescription ? (
+                  <p className="whitespace-pre-line px-4 py-4 text-sm leading-6 text-foreground">{productDescription}</p>
+                ) : (
+                  <p className="px-4 py-4 text-sm text-muted-foreground">Sản phẩm chưa có mô tả.</p>
+                )}
+              </section>
+
               <div className="mt-6 grid gap-3 border border-border p-4 text-sm">
                 <p>
                   SKU: <span className="font-semibold">{variant.sku}</span>
