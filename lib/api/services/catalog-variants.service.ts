@@ -8,6 +8,7 @@ import type {
   CatalogVariant,
   CatalogVariantSearchResponse,
 } from "@/lib/catalog/types";
+import type { Country } from "@/lib/country/types";
 
 type CatalogVariantQuery = {
   brandId?: string;
@@ -85,6 +86,12 @@ export function listCatalogBrands() {
 
 export function listCatalogCategoriesTree() {
   return apiRequest<CategoryTreeNode[]>("/catalog/categories/tree", {
+    method: "GET",
+  });
+}
+
+export function listCatalogCountries() {
+  return apiRequest<Country[]>("/catalog/countries", {
     method: "GET",
   });
 }

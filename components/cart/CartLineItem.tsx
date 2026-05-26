@@ -7,6 +7,8 @@ import { toast } from "sonner";
 import { useCart } from "@/components/cart/CartProvider";
 import { formatCartMoney, formatTaxSource } from "@/components/cart/cart-format";
 import type { CartItem } from "@/lib/cart/types";
+import { FALLBACK_LOGO_IMAGE } from "@/lib/image-fallbacks";
+import { isContactForPrice } from "@/lib/pricing-status";
 
 export function CartLineItem({
   compact = false,
@@ -24,8 +26,10 @@ export function CartLineItem({
   const { isMutating, removeItem, updateQuantity } = useCart();
   const minQuantity = item.minOrderQuantity;
   const maxQuantity = item.stockQuantity;
-  const canEditQuantity = !isMutating && item.available;
-  const imageUrl = item.snapshot.imageUrl || item.variant.imageUrls?.[0];
+  const requiresQuote = isContactForPrice(item.current.pricingStatus ?? item.variant.pricingStatus);
+  const canEditQuantity = !isMutating && item.available && !requiresQuote;
+  const imageUrl = item.snapshot.imageUrl || item.variant.imageUrls?.[0] || FALLBACK_LOGO_IMAGE;
+  const isFallbackImage = imageUrl === FALLBACK_LOGO_IMAGE;
 
   function handleQuantityChange(nextQuantity: number) {
     if (nextQuantity < minQuantity) {
@@ -58,7 +62,7 @@ export function CartLineItem({
             aria-label={`Chọn ${item.variant.name}`}
             checked={isSelected}
             className="size-4 cursor-pointer accent-primary disabled:cursor-not-allowed"
-            disabled={!item.available}
+            disabled={!item.available || requiresQuote}
             onChange={(event) => onSelectedChange?.(item.id, event.currentTarget.checked)}
             type="checkbox"
           />
@@ -69,19 +73,13 @@ export function CartLineItem({
         className="relative aspect-square overflow-hidden border border-border bg-muted/20"
         aria-label={`Xem ${item.variant.name}`}
       >
-        {imageUrl ? (
-          <Image
-            alt={item.variant.name}
-            className="object-cover"
-            fill
-            sizes="88px"
-            src={imageUrl}
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center px-2 text-center text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-            Chưa có ảnh
-          </div>
-        )}
+        <Image
+          alt={item.variant.name}
+          className={isFallbackImage ? "object-contain p-3" : "object-cover"}
+          fill
+          sizes="88px"
+          src={imageUrl}
+        />
       </Link>
 
       <div className="min-w-0">
@@ -94,6 +92,7 @@ export function CartLineItem({
               {item.variant.name}
             </Link>
             <p className="mt-1 truncate text-xs text-muted-foreground">SKU: {item.variant.sku}</p>
+            <p className="mt-1 truncate text-xs text-muted-foreground">Xuất xứ: {item.variant.originCountryCode ?? "Chưa có"}</p>
           </div>
           <button
             type="button"
@@ -112,6 +111,11 @@ export function CartLineItem({
               Không khả dụng
             </span>
           ) : null}
+          {requiresQuote ? (
+            <span className="border border-secondary bg-secondary/30 px-2 py-1 text-[11px] font-semibold text-foreground">
+              Cần báo giá
+            </span>
+          ) : null}
           {item.priceChanged ? (
             <span className="border border-secondary bg-secondary/30 px-2 py-1 text-[11px] font-semibold text-foreground">
               Giá đã thay đổi
@@ -122,15 +126,17 @@ export function CartLineItem({
         <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-xs text-muted-foreground">Giá hiện tại</p>
-            <p className="text-base font-black text-primary">{formatCartMoney(item.current.effectivePrice)}</p>
-            {item.current.tax ? (
+            <p className="text-base font-black text-primary">
+              {requiresQuote ? "Liên hệ báo giá" : formatCartMoney(item.current.effectivePrice)}
+            </p>
+            {!requiresQuote && item.current.tax ? (
               <p className="mt-1 text-xs text-muted-foreground">
                 Thuế {item.current.tax.percent}%:{" "}
                 <span className="font-semibold text-foreground">{formatCartMoney(item.current.tax.amount)}</span>
                 {" "}({formatTaxSource(item.current.tax.source)})
               </p>
             ) : null}
-            {item.current.totalWithTax ? (
+            {!requiresQuote && item.current.totalWithTax ? (
               <p className="text-xs text-muted-foreground">
                 Tổng sau thuế:{" "}
                 <span className="font-semibold text-foreground">{formatCartMoney(item.current.totalWithTax)}</span>

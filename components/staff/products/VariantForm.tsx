@@ -3,14 +3,19 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { listCatalogCountries } from "@/lib/api/services/catalog-variants.service";
 import { generateSlug } from "@/lib/api/services/slug.service";
+import type { Country } from "@/lib/country/types";
 import type { CreateVariantPayload, ProductSummary } from "@/lib/product/types";
+import type { PricingStatus } from "@/lib/pricing-status";
 
 export type VariantFormValue = {
   sku: string;
   manufacturerPartNumber: string;
+  originCountryCode: string;
   name: string;
   slug: string;
+  pricingStatus: PricingStatus;
   price: string;
   costPrice: string;
   salePrice: string;
@@ -42,8 +47,10 @@ type VariantFormProps = {
 export const DEFAULT_VARIANT_FORM_VALUE: VariantFormValue = {
   sku: "",
   manufacturerPartNumber: "",
+  originCountryCode: "",
   name: "",
   slug: "",
+  pricingStatus: "HAS_PRICE",
   price: "",
   costPrice: "",
   salePrice: "",
@@ -118,6 +125,8 @@ export default function VariantForm({
   onSubmit,
 }: VariantFormProps) {
   const [formValue, setFormValue] = useState<VariantFormValue>(defaultValue);
+  const [countries, setCountries] = useState<Country[]>([]);
+  const [isLoadingCountries, setIsLoadingCountries] = useState(false);
   const [isGeneratingSlug, setIsGeneratingSlug] = useState(false);
   const [isSlugEditedManually, setIsSlugEditedManually] = useState(false);
 
@@ -131,6 +140,32 @@ export default function VariantForm({
   useEffect(() => {
     onDirtyChange?.(isDirty);
   }, [isDirty, onDirtyChange]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadCountries() {
+      setIsLoadingCountries(true);
+      try {
+        const response = await listCatalogCountries();
+        if (isMounted) {
+          setCountries(response);
+        }
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Không thể tải danh sách xuất xứ.");
+      } finally {
+        if (isMounted) {
+          setIsLoadingCountries(false);
+        }
+      }
+    }
+
+    void loadCountries();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleGenerateSlug = async (sourceText: string, force = false) => {
     if (!sourceText.trim()) {
@@ -170,8 +205,13 @@ export default function VariantForm({
     const parsedViewCount = parseNonNegativeInt(formValue.viewCount);
     const parsedOrderCount = parseNonNegativeInt(formValue.orderCount);
 
-    if (price === undefined || price === null) {
+    if (formValue.pricingStatus === "HAS_PRICE" && (price === undefined || price === null)) {
       toast.warning("Giá bán là bắt buộc và phải là số không âm.");
+      return;
+    }
+
+    if (price === null) {
+      toast.warning("Giá bán phải là số không âm nếu được nhập.");
       return;
     }
 
@@ -203,9 +243,11 @@ export default function VariantForm({
       productId: product.id,
       sku: formValue.sku.trim(),
       manufacturerPartNumber: formValue.manufacturerPartNumber.trim() || undefined,
+      originCountryCode: formValue.originCountryCode || undefined,
       name: formValue.name.trim(),
       slug: formValue.slug.trim(),
-      price,
+      price: price ?? 0,
+      pricingStatus: formValue.pricingStatus,
       costPrice,
       salePrice,
       discountPercent,
@@ -286,6 +328,23 @@ export default function VariantForm({
             </div>
 
             <label className="grid gap-2 text-sm">
+              <FieldLabel>Xuất xứ</FieldLabel>
+              <select
+                className="h-11 cursor-pointer border border-border bg-background px-3 outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={isLoadingCountries}
+                onChange={(event) => setFormValue((current) => ({ ...current, originCountryCode: event.target.value }))}
+                value={formValue.originCountryCode}
+              >
+                <option value="">{isLoadingCountries ? "Đang tải xuất xứ..." : "Chưa chọn xuất xứ"}</option>
+                {countries.map((country) => (
+                  <option key={country.code} value={country.code}>
+                    {country.nameVi} ({country.code})
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="grid gap-2 text-sm">
               <FieldLabel required>Tên biến thể</FieldLabel>
               <input
                 className="h-11 border border-border bg-background px-3 outline-none focus:border-primary"
@@ -335,16 +394,34 @@ export default function VariantForm({
           <article className="space-y-4 border border-border p-4 md:p-5">
             <SectionTitle
               title="Giá bán và thuế"
-              description="Giá nhập để nội bộ tính doanh thu. Nếu bỏ trống, backend tự dùng bằng giá bán."
+              description="Chọn cần báo giá khi chưa công bố giá bán. Khi đó hệ thống ẩn giá và không cho thêm giỏ."
             />
 
             <label className="grid gap-2 text-sm">
-              <FieldLabel required>Giá bán</FieldLabel>
+              <FieldLabel>Trạng thái giá</FieldLabel>
+              <select
+                className="h-11 cursor-pointer border border-border bg-background px-3 outline-none focus:border-primary"
+                onChange={(event) =>
+                  setFormValue((current) => ({
+                    ...current,
+                    pricingStatus: event.target.value as PricingStatus,
+                    price: event.target.value === "CONTACT_FOR_PRICE" && !current.price.trim() ? "0" : current.price,
+                  }))
+                }
+                value={formValue.pricingStatus}
+              >
+                <option value="HAS_PRICE">Có giá</option>
+                <option value="CONTACT_FOR_PRICE">Cần báo giá</option>
+              </select>
+            </label>
+
+            <label className="grid gap-2 text-sm">
+              <FieldLabel required={formValue.pricingStatus === "HAS_PRICE"}>Giá bán</FieldLabel>
               <input
                 className="h-11 border border-border bg-background px-3 outline-none focus:border-primary"
                 min={0}
                 onChange={(event) => setFormValue((current) => ({ ...current, price: event.target.value }))}
-                required
+                required={formValue.pricingStatus === "HAS_PRICE"}
                 step="0.01"
                 type="number"
                 value={formValue.price}

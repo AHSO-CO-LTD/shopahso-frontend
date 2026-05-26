@@ -47,8 +47,10 @@ function toVariantFormValue(variant: VariantSummary): VariantFormValue {
   return {
     sku: variant.sku,
     manufacturerPartNumber: variant.manufacturerPartNumber ?? "",
+    originCountryCode: variant.originCountryCode ?? "",
     name: variant.name,
     slug: variant.slug,
+    pricingStatus: variant.pricingStatus ?? "HAS_PRICE",
     price: String(variant.price),
     costPrice: variant.costPrice == null ? "" : String(variant.costPrice),
     salePrice: variant.salePrice == null ? "" : String(variant.salePrice),

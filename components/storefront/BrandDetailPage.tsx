@@ -7,6 +7,7 @@ import { listCatalogBrands, listCatalogVariants } from "@/lib/api/services/catal
 import type { Brand } from "@/lib/brand/types";
 import { formatCatalogMoney, getCatalogPricingDisplay } from "@/lib/catalog/pricing";
 import type { CatalogVariant } from "@/lib/catalog/types";
+import { FALLBACK_LOGO_IMAGE } from "@/lib/image-fallbacks";
 
 export default function BrandDetailPage({ slug }: { slug: string }) {
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -70,19 +71,15 @@ export default function BrandDetailPage({ slug }: { slug: string }) {
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Thương hiệu</p>
               <div className="mt-3 flex items-center gap-4">
                 <div className="flex h-16 w-40 items-center justify-center border border-border bg-background px-2">
-                  {selectedBrand.logoUrl ? (
-                    <div className="relative h-10 w-full">
-                      <Image
-                        alt={`Logo ${selectedBrand.name}`}
-                        className="object-contain"
-                        fill
-                        sizes="160px"
-                        src={selectedBrand.logoUrl}
-                      />
-                    </div>
-                  ) : (
-                    <span className="text-xs font-semibold text-muted-foreground">Chưa có logo</span>
-                  )}
+                  <div className="relative h-10 w-full">
+                    <Image
+                      alt={`Logo ${selectedBrand.name}`}
+                      className="object-contain"
+                      fill
+                      sizes="160px"
+                      src={selectedBrand.logoUrl ?? FALLBACK_LOGO_IMAGE}
+                    />
+                  </div>
                 </div>
                 <div>
                   <h1 className="text-3xl font-black tracking-tight lg:text-4xl">{selectedBrand.name}</h1>
@@ -95,23 +92,21 @@ export default function BrandDetailPage({ slug }: { slug: string }) {
               <div className="border border-border p-8 text-sm text-muted-foreground">Thương hiệu này hiện chưa có biến thể đang mở bán.</div>
             ) : (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {variants.map((variant) => (
+                {variants.map((variant) => {
+                  const imageUrl = variant.effectiveImageUrls?.[0] ?? FALLBACK_LOGO_IMAGE;
+                  const isFallbackImage = imageUrl === FALLBACK_LOGO_IMAGE;
+
+                  return (
                   <article key={variant.id} className="flex flex-col border border-border bg-background">
                     <div className="border-b border-border bg-muted/15">
                       <div className="relative aspect-[4/3] w-full">
-                        {variant.effectiveImageUrls?.[0] ? (
-                          <Image
-                            alt={variant.name}
-                            className="object-cover"
-                            fill
-                            sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 25vw"
-                            src={variant.effectiveImageUrls[0]}
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                            Chưa có ảnh
-                          </div>
-                        )}
+                        <Image
+                          alt={variant.name}
+                          className={isFallbackImage ? "object-contain p-8" : "object-cover"}
+                          fill
+                          sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 25vw"
+                          src={imageUrl}
+                        />
                       </div>
                     </div>
                     <div className="border-b border-border bg-muted/20 px-4 py-3">
@@ -120,6 +115,7 @@ export default function BrandDetailPage({ slug }: { slug: string }) {
                     </div>
                     <div className="flex flex-1 flex-col gap-2 px-4 py-4">
                       <p className="text-xs text-muted-foreground">SKU: {variant.sku}</p>
+                      <p className="text-xs text-muted-foreground">Xuất xứ: {variant.originCountryCode ?? "Chưa có"}</p>
                       <p className="text-xs text-muted-foreground">Tồn kho: {variant.stockQuantity}</p>
                       <BrandVariantPrice variant={variant} />
                     </div>
@@ -132,7 +128,8 @@ export default function BrandDetailPage({ slug }: { slug: string }) {
                       </Link>
                     </div>
                   </article>
-                ))}
+                  );
+                })}
               </div>
             )}
           </>

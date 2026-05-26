@@ -16,6 +16,7 @@ import {
   type VariantImportPreviewError,
   type VariantImportPreviewResponse,
 } from "@/lib/api/services/variants.service";
+import { getPricingStatusBadgeClass, getPricingStatusLabel } from "@/lib/pricing-status";
 import type { ProductDetail } from "@/lib/product/types";
 
 type ImportValidationPayload = {
@@ -388,7 +389,9 @@ export default function StaffProductVariantImport({ productId }: { productId: st
                               <th className="border-b border-border px-3 py-2">Tên biến thể</th>
                               <th className="border-b border-border px-3 py-2">SKU</th>
                               <th className="border-b border-border px-3 py-2">Slug</th>
+                              <th className="border-b border-border px-3 py-2">Xuất xứ</th>
                               <th className="border-b border-border px-3 py-2">Giá bán</th>
+                              <th className="border-b border-border px-3 py-2">Trạng thái giá</th>
                               <th className="border-b border-border px-3 py-2">Giá nhập</th>
                               <th className="border-b border-border px-3 py-2">Tồn kho</th>
                               <th className="border-b border-border px-3 py-2">Đơn vị</th>
@@ -401,7 +404,15 @@ export default function StaffProductVariantImport({ productId }: { productId: st
                                 <td className="border-b border-border px-3 py-2">{row.variantName}</td>
                                 <td className="border-b border-border px-3 py-2">{row.sku}</td>
                                 <td className="border-b border-border px-3 py-2">{row.slug}</td>
+                                <td className="border-b border-border px-3 py-2">
+                                  {row.originCountryName ? `${row.originCountryName} (${row.originCountryCode})` : row.originCountryCode ?? "-"}
+                                </td>
                                 <td className="border-b border-border px-3 py-2">{row.price}</td>
+                                <td className="border-b border-border px-3 py-2">
+                                  <span className={`inline-flex border px-2 py-1 text-[11px] font-semibold ${getPricingStatusBadgeClass(row.pricingStatus)}`}>
+                                    {getPricingStatusLabel(row.pricingStatus)}
+                                  </span>
+                                </td>
                                 <td className="border-b border-border px-3 py-2">{row.costPrice}</td>
                                 <td className="border-b border-border px-3 py-2">{row.stockQuantity}</td>
                                 <td className="border-b border-border px-3 py-2">{row.unit}</td>
@@ -441,6 +452,7 @@ export default function StaffProductVariantImport({ productId }: { productId: st
                             <th className="border-b border-border px-3 py-2">Tên biến thể</th>
                             <th className="border-b border-border px-3 py-2">SKU</th>
                             <th className="border-b border-border px-3 py-2">Slug</th>
+                            <th className="border-b border-border px-3 py-2">Trạng thái giá</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -449,6 +461,11 @@ export default function StaffProductVariantImport({ productId }: { productId: st
                               <td className="border-b border-border px-3 py-2">{item.name}</td>
                               <td className="border-b border-border px-3 py-2">{item.sku}</td>
                               <td className="border-b border-border px-3 py-2">{item.slug}</td>
+                              <td className="border-b border-border px-3 py-2">
+                                <span className={`inline-flex border px-2 py-1 text-[11px] font-semibold ${getPricingStatusBadgeClass(item.pricingStatus)}`}>
+                                  {getPricingStatusLabel(item.pricingStatus)}
+                                </span>
+                              </td>
                             </tr>
                           ))}
                         </tbody>

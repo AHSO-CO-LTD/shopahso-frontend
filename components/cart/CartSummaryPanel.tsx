@@ -7,6 +7,7 @@ import { useCart } from "@/components/cart/CartProvider";
 import { formatCartMoney } from "@/components/cart/cart-format";
 import { setStoredCheckoutItemIds } from "@/lib/checkout/storage";
 import type { Cart, CartItem, CartSummary } from "@/lib/cart/types";
+import { isContactForPrice } from "@/lib/pricing-status";
 
 export function CartSummaryPanel({
   cart,
@@ -28,6 +29,7 @@ export function CartSummaryPanel({
   const summary = selectedSummary ?? cart.summary;
   const hasSelectedItems = checkoutItemIds.length > 0;
   const hasUnavailableItem = checkoutItems.some((item) => !item.available);
+  const hasQuoteItem = checkoutItems.some((item) => isContactForPrice(item.current.pricingStatus ?? item.variant.pricingStatus));
 
   function handleCheckout() {
     if (!hasSelectedItems) {
@@ -37,6 +39,11 @@ export function CartSummaryPanel({
 
     if (hasUnavailableItem) {
       toast.warning("Có sản phẩm đã chọn không khả dụng. Vui lòng cập nhật giỏ hàng trước khi checkout.");
+      return;
+    }
+
+    if (hasQuoteItem) {
+      toast.warning("Có sản phẩm cần báo giá. Vui lòng liên hệ AHSO trước khi checkout.");
       return;
     }
 
@@ -101,6 +108,12 @@ export function CartSummaryPanel({
         </p>
       ) : null}
 
+      {hasQuoteItem ? (
+        <p className="mt-3 border border-secondary bg-secondary/30 px-3 py-2 text-xs font-semibold">
+          Có sản phẩm cần báo giá trong lựa chọn hiện tại. Các sản phẩm này chưa thể checkout trực tiếp.
+        </p>
+      ) : null}
+
       <div className="mt-4 grid gap-2">
         {showCartLink ? (
           <Link
@@ -114,7 +127,7 @@ export function CartSummaryPanel({
         <button
           type="button"
           className="inline-flex h-10 cursor-pointer items-center justify-center border border-primary bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-          disabled={!hasSelectedItems || hasUnavailableItem}
+          disabled={!hasSelectedItems || hasUnavailableItem || hasQuoteItem}
           onClick={handleCheckout}
         >
           Tiến hành đặt hàng

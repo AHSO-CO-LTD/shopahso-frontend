@@ -7,6 +7,8 @@ import { getCatalogVariantBySlug } from "@/lib/api/services/catalog-variants.ser
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
 import { getCatalogPricingDisplay } from "@/lib/catalog/pricing";
 import type { CatalogVariant, CatalogVariantAttributeValue } from "@/lib/catalog/types";
+import { FALLBACK_LOGO_IMAGE } from "@/lib/image-fallbacks";
+import { getPricingStatusBadgeClass, getPricingStatusLabel, isContactForPrice } from "@/lib/pricing-status";
 
 type DisplaySpec = {
   key: string;
@@ -146,6 +148,9 @@ export default function ProductVariantDetailPage({ slug }: { slug: string }) {
       tax: variant.tax,
     });
   }, [variant]);
+  const requiresQuote = isContactForPrice(variant?.pricingStatus);
+  const detailImageUrl = variant?.effectiveImageUrls?.[0] ?? FALLBACK_LOGO_IMAGE;
+  const isDetailFallbackImage = detailImageUrl === FALLBACK_LOGO_IMAGE;
 
   useEffect(() => {
     async function loadVariant() {
@@ -188,19 +193,13 @@ export default function ProductVariantDetailPage({ slug }: { slug: string }) {
             <div>
               <div className="mb-5 border border-border bg-muted/15">
                 <div className="relative aspect-[16/9] w-full">
-                  {variant.effectiveImageUrls?.[0] ? (
-                    <Image
-                      alt={variant.name}
-                      className="object-cover"
-                      fill
-                      sizes="(max-width: 1024px) 100vw, 60vw"
-                      src={variant.effectiveImageUrls[0]}
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                      Chưa có ảnh biến thể
-                    </div>
-                  )}
+                  <Image
+                    alt={variant.name}
+                    className={isDetailFallbackImage ? "object-contain p-12" : "object-cover"}
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 60vw"
+                    src={detailImageUrl}
+                  />
                 </div>
               </div>
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
@@ -210,6 +209,9 @@ export default function ProductVariantDetailPage({ slug }: { slug: string }) {
               <p className="mt-2 text-sm text-muted-foreground">
                 Sản phẩm gốc: <span className="font-semibold text-foreground">{variant.product.name}</span>
               </p>
+              <span className={`mt-4 inline-flex border px-2 py-1 text-[11px] font-semibold ${getPricingStatusBadgeClass(variant.pricingStatus)}`}>
+                {getPricingStatusLabel(variant.pricingStatus)}
+              </span>
               <div className="mt-6 grid gap-3 border border-border p-4 text-sm">
                 <p>
                   SKU: <span className="font-semibold">{variant.sku}</span>
@@ -219,6 +221,9 @@ export default function ProductVariantDetailPage({ slug }: { slug: string }) {
                 </p>
                 <p>
                   Thương hiệu: <span className="font-semibold">{variant.brand?.name ?? "Không gắn thương hiệu"}</span>
+                </p>
+                <p>
+                  Xuất xứ: <span className="font-semibold">{variant.originCountryCode ?? "Chưa có"}</span>
                 </p>
                 <p>
                   Tồn kho: <span className="font-semibold">{variant.stockQuantity}</span>
@@ -260,32 +265,46 @@ export default function ProductVariantDetailPage({ slug }: { slug: string }) {
             </div>
             <aside className="border border-border bg-muted/20 p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Giá bán</p>
-              <p className="mt-2 text-3xl font-black text-primary">
-                {formatMoney(taxPreview?.totalWithTax ?? variant.price)}
-              </p>
-              <div className="mt-4 grid gap-2 border border-border bg-background p-3 text-sm">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-muted-foreground">Giá trước thuế</span>
-                  <span className="font-semibold">{formatMoney(taxPreview?.effectivePrice ?? variant.price)}</span>
+              {requiresQuote ? (
+                <div className="mt-2">
+                  <p className="text-3xl font-black text-primary">Liên hệ báo giá</p>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Sản phẩm này cần xác nhận giá theo số lượng, tồn kho và thời điểm đặt hàng.
+                  </p>
                 </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-muted-foreground">Thuế</span>
-                  <span className="font-semibold">
-                    {taxPreview?.taxPercent ?? 0}% ({formatMoney(taxPreview?.taxAmount ?? 0)})
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-3 border-t border-border pt-2">
-                  <span className="font-semibold">Tổng sau thuế</span>
-                  <span className="font-black text-primary">{formatMoney(taxPreview?.totalWithTax ?? variant.price)}</span>
-                </div>
-              </div>
+              ) : (
+                <>
+                  <p className="mt-2 text-3xl font-black text-primary">
+                    {formatMoney(taxPreview?.totalWithTax ?? variant.price)}
+                  </p>
+                  <div className="mt-4 grid gap-2 border border-border bg-background p-3 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-muted-foreground">Giá trước thuế</span>
+                      <span className="font-semibold">{formatMoney(taxPreview?.effectivePrice ?? variant.price)}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-muted-foreground">Thuế</span>
+                      <span className="font-semibold">
+                        {taxPreview?.taxPercent ?? 0}% ({formatMoney(taxPreview?.taxAmount ?? 0)})
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 border-t border-border pt-2">
+                      <span className="font-semibold">Tổng sau thuế</span>
+                      <span className="font-black text-primary">{formatMoney(taxPreview?.totalWithTax ?? variant.price)}</span>
+                    </div>
+                  </div>
+                </>
+              )}
               <div className="mt-6 grid gap-2">
-                <AddToCartButton
-                  active={variant.active}
-                  className="h-11 w-full px-4"
-                  stockQuantity={variant.stockQuantity}
-                  variantId={variant.id}
-                />
+                {!requiresQuote ? (
+                  <AddToCartButton
+                    active={variant.active}
+                    className="h-11 w-full px-4"
+                    pricingStatus={variant.pricingStatus}
+                    stockQuantity={variant.stockQuantity}
+                    variantId={variant.id}
+                  />
+                ) : null}
                 <button
                   className="inline-flex h-11 w-full cursor-pointer items-center justify-center border border-border bg-background px-4 text-sm font-semibold transition-colors hover:border-primary hover:text-primary"
                   type="button"

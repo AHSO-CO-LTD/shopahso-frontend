@@ -1,5 +1,6 @@
 import type { Brand } from "@/lib/brand/types";
 import type { BackofficeCategory } from "@/lib/category/types";
+import type { PricingStatus } from "@/lib/pricing-status";
 
 export type ProductStatus = "DRAFT" | "PUBLISHED";
 export type AttributeDataType = "TEXT" | "NUMBER" | "BOOLEAN" | "ENUM";
@@ -35,9 +36,11 @@ export type VariantSummary = {
   brandId: string | null;
   sku: string;
   manufacturerPartNumber: string | null;
+  originCountryCode: string | null;
   name: string;
   slug: string;
-  price: number;
+  price: number | string;
+  pricingStatus: PricingStatus;
   costPrice: number | string | null;
   salePrice: number | string | null;
   discountPercent: number | string | null;
@@ -135,9 +138,11 @@ export type CreateVariantPayload = {
   productId: string;
   sku: string;
   manufacturerPartNumber?: string;
+  originCountryCode?: string;
   name: string;
   slug: string;
   price: number;
+  pricingStatus?: PricingStatus;
   costPrice?: number;
   salePrice?: number;
   discountPercent?: number;
