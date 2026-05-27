@@ -296,6 +296,7 @@ export default function StaffProductManager() {
                 }}
                 onDelete={() => selectedProduct && setDeletingProduct(selectedProduct)}
                 onSubmit={handleSubmitProduct}
+                productId={selectedProduct?.id}
               />
             </div>
           </article>

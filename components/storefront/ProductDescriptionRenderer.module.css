@@ -1,0 +1,135 @@
+.description {
+  color: var(--foreground);
+  font-size: 0.9375rem;
+  line-height: 1.75;
+}
+
+.description :where(p, ul, ol, div) {
+  margin-top: 0.875rem;
+}
+
+.description :where(p, ul, ol, div):first-child {
+  margin-top: 0;
+}
+
+.description :where(h1, h2, h3) {
+  color: var(--foreground);
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1.25;
+  margin-top: 1.5rem;
+}
+
+.description h1 {
+  font-size: 1.5rem;
+}
+
+.description h2 {
+  font-size: 1.25rem;
+}
+
+.description h3 {
+  font-size: 1.0625rem;
+}
+
+.description :where(ul, ol) {
+  padding-left: 1.25rem;
+}
+
+.description ul {
+  list-style: disc;
+}
+
+.description ol {
+  list-style: decimal;
+}
+
+.description a {
+  color: var(--primary);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.description a:hover {
+  color: var(--foreground);
+}
+
+.description img,
+.description :global(.description-image) {
+  border: 1px solid var(--border);
+  display: block;
+  height: auto;
+  margin: 1rem 0;
+  max-width: 100%;
+}
+
+.description :global(.image-row) {
+  margin-top: 1rem;
+}
+
+.description :global(.image-size-small) {
+  width: 25%;
+}
+
+.description :global(.image-size-medium) {
+  width: 50%;
+}
+
+.description :global(.image-size-large) {
+  width: 75%;
+}
+
+.description :global(.image-size-full) {
+  width: 100%;
+}
+
+.description :global(.image-align-left) {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+.description :global(.image-align-center) {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.description :global(.image-align-right) {
+  margin-left: auto;
+  margin-right: 0;
+}
+
+.description :global(.text-left) {
+  text-align: left;
+}
+
+.description :global(.text-center) {
+  text-align: center;
+}
+
+.description :global(.text-right) {
+  text-align: right;
+}
+
+.description :global(.related-product-link) {
+  align-items: center;
+  background: color-mix(in oklch, var(--muted) 24%, transparent);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding: 0.75rem 0.875rem;
+}
+
+.description :global(.related-product-label) {
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.description :global(.related-product-anchor) {
+  font-size: 0.875rem;
+}

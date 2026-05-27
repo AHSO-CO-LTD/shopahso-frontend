@@ -120,6 +120,19 @@ export type ProductDetail = ProductSummary & {
   attributes: ProductAttributeDefinition[];
 };
 
+export type ProductDescriptionAsset = {
+  id: string;
+  url: string;
+  publicId: string;
+  alt: string | null;
+  product: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+  createdAt: string;
+};
+
 export type CreateProductPayload = {
   categoryId: string;
   brandId?: string;
