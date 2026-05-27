@@ -1,6 +1,7 @@
 import { authenticatedApiRequest } from "@/lib/auth/authenticated-request";
 import type {
   CreateProductPayload,
+  ProductDescriptionAsset,
   ProductDetail,
   ProductSummary,
   UpdateProductPayload,
@@ -52,5 +53,26 @@ export function deleteBackofficeProductImage(id: string, publicId: string) {
   return authenticatedApiRequest<ProductSummary>(`/backoffice/products/${id}/images`, {
     body: { publicId },
     method: "DELETE",
+  });
+}
+
+export function uploadBackofficeProductDescriptionImage(id: string, file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  return authenticatedApiRequest<ProductDescriptionAsset>(`/backoffice/products/${id}/description-images`, {
+    body: formData,
+    method: "POST",
+  });
+}
+
+export function listBackofficeProductDescriptionImages(params: {
+  limit?: number;
+  productId?: string;
+  search?: string;
+} = {}) {
+  return authenticatedApiRequest<ProductDescriptionAsset[]>("/backoffice/products/description-images", {
+    method: "GET",
+    query: params,
   });
 }

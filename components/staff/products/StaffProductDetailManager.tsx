@@ -225,6 +225,7 @@ export default function StaffProductDetailManager({ productId }: { productId: st
                   isSubmitting={isSubmittingProduct}
                   onDelete={() => setDeletingProduct(true)}
                   onSubmit={handleSubmitProduct}
+                  productId={productDetail.id}
                 />
               </div>
             )}

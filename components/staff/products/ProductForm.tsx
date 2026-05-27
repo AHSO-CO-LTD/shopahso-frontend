@@ -3,6 +3,7 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import RichDescriptionEditor from "@/components/staff/products/RichDescriptionEditor";
 import { generateSlug } from "@/lib/api/services/slug.service";
 import type { Brand } from "@/lib/brand/types";
 import type { BackofficeCategory } from "@/lib/category/types";
@@ -30,6 +31,7 @@ type ProductFormProps = {
   onCancelEdit?: () => void;
   onDelete?: () => void;
   onSubmit: (payload: CreateProductPayload) => Promise<void>;
+  productId?: string;
 };
 
 export const DEFAULT_PRODUCT_FORM_VALUE: ProductFormValue = {
@@ -99,6 +101,7 @@ export default function ProductForm({
   onCancelEdit,
   onDelete,
   onSubmit,
+  productId,
 }: ProductFormProps) {
   const [formValue, setFormValue] = useState<ProductFormValue>(defaultValue);
   const [isGeneratingSlug, setIsGeneratingSlug] = useState(false);
@@ -233,14 +236,14 @@ export default function ProductForm({
               </div>
             </div>
 
-            <label className="grid gap-2 text-sm">
-              <FieldLabel>Mô tả (không bắt buộc)</FieldLabel>
-              <textarea
-                className="min-h-28 border border-border bg-background px-3 py-2 outline-none focus:border-primary"
-                onChange={(event) => setFormValue((current) => ({ ...current, description: event.target.value }))}
+            <div className="grid gap-2 text-sm">
+              <FieldLabel>Mô tả HTML (không bắt buộc)</FieldLabel>
+              <RichDescriptionEditor
+                onChange={(description) => setFormValue((current) => ({ ...current, description }))}
+                productId={productId}
                 value={formValue.description}
               />
-            </label>
+            </div>
           </article>
 
           {imageUploadSlot}

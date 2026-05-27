@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import ProductDescriptionRenderer from "@/components/storefront/ProductDescriptionRenderer";
 import { getCatalogVariantBySlug } from "@/lib/api/services/catalog-variants.service";
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
 import { getCatalogPricingDisplay } from "@/lib/catalog/pricing";
@@ -219,9 +220,9 @@ export default function ProductVariantDetailPage({ slug }: { slug: string }) {
                   <h2 className="text-sm font-semibold">Mô tả sản phẩm</h2>
                 </div>
                 {productDescription ? (
-                  <p className="whitespace-pre-line px-4 py-4 text-sm leading-6 text-foreground">{productDescription}</p>
+                  <ProductDescriptionRenderer html={productDescription} />
                 ) : (
-                  <p className="px-4 py-4 text-sm text-muted-foreground">Sản phẩm chưa có mô tả.</p>
+                  <ProductDescriptionRenderer html={null} />
                 )}
               </section>
 
