@@ -3,11 +3,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { listCatalogBrands, listCatalogVariants } from "@/lib/api/services/catalog-variants.service";
+import CatalogVariantCard from "@/components/storefront/CatalogVariantCard";
+import { listCatalogBrands, searchCatalogVariants } from "@/lib/api/services/catalog-variants.service";
 import type { Brand } from "@/lib/brand/types";
-import { formatCatalogMoney, getCatalogPricingDisplay } from "@/lib/catalog/pricing";
 import type { CatalogVariant } from "@/lib/catalog/types";
 import { FALLBACK_LOGO_IMAGE } from "@/lib/image-fallbacks";
+
+type BrandDisplay = Pick<Brand, "name" | "slug" | "logoUrl">;
 
 export default function BrandDetailPage({ slug }: { slug: string }) {
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -15,15 +17,22 @@ export default function BrandDetailPage({ slug }: { slug: string }) {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const selectedBrand = useMemo(() => brands.find((brand) => brand.slug === slug) ?? null, [brands, slug]);
+  const selectedBrand = useMemo<BrandDisplay | null>(() => brands.find((brand) => brand.slug === slug) ?? null, [brands, slug]);
 
   useEffect(() => {
+    let isCancelled = false;
+
     async function loadBrandAndVariants() {
       setIsLoading(true);
       setErrorMessage(null);
 
       try {
         const brandsResponse = await listCatalogBrands();
+
+        if (isCancelled) {
+          return;
+        }
+
         setBrands(brandsResponse);
 
         const matchedBrand = brandsResponse.find((brand) => brand.slug === slug);
@@ -32,19 +41,32 @@ export default function BrandDetailPage({ slug }: { slug: string }) {
           return;
         }
 
-        const variantsResponse = await listCatalogVariants({
+        const variantsResponse = await searchCatalogVariants({
           brandId: matchedBrand.id,
           limit: 48,
+          page: 1,
+          sort: "relevance",
         });
-        setVariants(variantsResponse);
+
+        if (!isCancelled) {
+          setVariants(variantsResponse.items);
+        }
       } catch (error) {
-        setErrorMessage(error instanceof Error ? error.message : "Không thể tải dữ liệu thương hiệu.");
+        if (!isCancelled) {
+          setErrorMessage(error instanceof Error ? error.message : "Không thể tải dữ liệu thương hiệu.");
+        }
       } finally {
-        setIsLoading(false);
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
       }
     }
 
     void loadBrandAndVariants();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [slug]);
 
   return (
@@ -53,9 +75,9 @@ export default function BrandDetailPage({ slug }: { slug: string }) {
         <div className="mb-6">
           <Link
             href="/thuong-hieu"
-            className="inline-flex h-9 items-center border border-border px-3 text-xs font-semibold transition-colors hover:border-primary hover:text-primary"
+            className="inline-flex h-9 cursor-pointer items-center border border-border px-3 text-xs font-semibold transition-colors hover:border-primary hover:text-primary"
           >
-            ← Quay lại danh sách thương hiệu
+            Quay lại danh sách thương hiệu
           </Link>
         </div>
 
@@ -69,8 +91,8 @@ export default function BrandDetailPage({ slug }: { slug: string }) {
           <>
             <header className="mb-8 border border-border bg-muted/15 px-4 py-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Thương hiệu</p>
-              <div className="mt-3 flex items-center gap-4">
-                <div className="flex h-16 w-40 items-center justify-center border border-border bg-background px-2">
+              <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-center">
+                <div className="flex h-16 w-full items-center justify-center border border-border bg-background px-2 sm:w-40">
                   <div className="relative h-10 w-full">
                     <Image
                       alt={`Logo ${selectedBrand.name}`}
@@ -81,7 +103,7 @@ export default function BrandDetailPage({ slug }: { slug: string }) {
                     />
                   </div>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h1 className="text-3xl font-black tracking-tight lg:text-4xl">{selectedBrand.name}</h1>
                   <p className="mt-2 text-sm text-muted-foreground">Tổng biến thể đang mở bán: {variants.length}</p>
                 </div>
@@ -89,69 +111,19 @@ export default function BrandDetailPage({ slug }: { slug: string }) {
             </header>
 
             {variants.length === 0 ? (
-              <div className="border border-border p-8 text-sm text-muted-foreground">Thương hiệu này hiện chưa có biến thể đang mở bán.</div>
+              <div className="border border-border p-8 text-sm text-muted-foreground">
+                Nhóm này hiện chưa có biến thể đang mở bán.
+              </div>
             ) : (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {variants.map((variant) => {
-                  const imageUrl = variant.effectiveImageUrls?.[0] ?? FALLBACK_LOGO_IMAGE;
-                  const isFallbackImage = imageUrl === FALLBACK_LOGO_IMAGE;
-
-                  return (
-                  <article key={variant.id} className="flex flex-col border border-border bg-background">
-                    <div className="border-b border-border bg-muted/15">
-                      <div className="relative aspect-[4/3] w-full">
-                        <Image
-                          alt={variant.name}
-                          className={isFallbackImage ? "object-contain p-8" : "object-cover"}
-                          fill
-                          sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 25vw"
-                          src={imageUrl}
-                        />
-                      </div>
-                    </div>
-                    <div className="border-b border-border bg-muted/20 px-4 py-3">
-                      <p className="truncate text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">{variant.category.name}</p>
-                      <h2 className="mt-2 line-clamp-2 min-h-12 text-base font-black tracking-tight">{variant.name}</h2>
-                    </div>
-                    <div className="flex flex-1 flex-col gap-2 px-4 py-4">
-                      <p className="text-xs text-muted-foreground">SKU: {variant.sku}</p>
-                      <p className="text-xs text-muted-foreground">Xuất xứ: {variant.originCountryCode ?? "Chưa có"}</p>
-                      <p className="text-xs text-muted-foreground">Tồn kho: {variant.stockQuantity}</p>
-                      <BrandVariantPrice variant={variant} />
-                    </div>
-                    <div className="border-t border-border px-4 py-3">
-                      <Link
-                        href={`/san-pham/${variant.slug}`}
-                        className="inline-flex h-9 w-full items-center justify-center border border-border px-3 text-sm font-semibold transition-colors hover:border-primary hover:text-primary"
-                      >
-                        Xem chi tiết
-                      </Link>
-                    </div>
-                  </article>
-                  );
-                })}
+              <div className="grid min-h-[24rem] content-start grid-cols-1 gap-3 min-[520px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {variants.map((variant) => (
+                  <CatalogVariantCard key={variant.id} variant={variant} />
+                ))}
               </div>
             )}
           </>
         )}
       </section>
     </main>
-  );
-}
-
-function BrandVariantPrice({ variant }: { variant: CatalogVariant }) {
-  const pricing = getCatalogPricingDisplay({
-    fallbackPrice: variant.salePrice ?? variant.price,
-    pricing: variant.pricing,
-    tax: variant.tax,
-  });
-
-  return (
-    <div>
-      <p className="text-lg font-black text-primary">{formatCatalogMoney(pricing.totalWithTax)}</p>
-      <p className="text-xs text-muted-foreground">
-        Đã gồm thuế {pricing.taxPercent}% ({formatCatalogMoney(pricing.taxAmount)})
-      </p>
-    </div>
   );
 }

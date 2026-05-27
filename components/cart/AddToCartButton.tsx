@@ -1,5 +1,6 @@
 "use client";
 
+import type { MouseEvent } from "react";
 import { ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import { useCart } from "@/components/cart/CartProvider";
@@ -33,10 +34,12 @@ export function AddToCartButton({
   const buttonToneClass = requiresQuote
     ? "border-yellow-500 bg-yellow-400 text-foreground hover:bg-yellow-500"
     : appearance === "attention"
-      ? "border-red-700 bg-red-600 text-primary-foreground hover:bg-red-700"
+      ? "border-red-700 bg-red-600 text-primary-foreground hover:-translate-y-1 hover:border-yellow-500 hover:bg-yellow-400 hover:text-foreground"
       : "border-primary bg-primary text-primary-foreground hover:bg-primary/90";
 
-  function handleAddToCart() {
+  function handleAddToCart(event: MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+
     if (requiresQuote) {
       toast.info("Sản phẩm này cần báo giá riêng. Vui lòng liên hệ AHSO để được tư vấn.");
       return;
@@ -53,7 +56,7 @@ export function AddToCartButton({
   return (
     <button
       type="button"
-      className={`inline-flex cursor-pointer items-center justify-center gap-2 border ${iconOnly ? "p-0" : "px-3"} text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${buttonToneClass} ${className}`}
+      className={`inline-flex cursor-pointer items-center justify-center gap-2 border ${iconOnly ? "p-0" : "px-3"} text-sm font-semibold transition-[background-color,border-color,color,transform] duration-200 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 ${buttonToneClass} ${className}`}
       disabled={isDisabled}
       onClick={handleAddToCart}
     >

@@ -75,8 +75,9 @@ export function CartContent({ compact = false }: { compact?: boolean }) {
 
   if (compact) {
     return (
-      <div className="grid gap-4">
-        <div className="grid max-h-[48dvh] gap-3 overflow-y-auto pr-1">
+      <div className="grid h-full min-h-0 grid-rows-[minmax(0,1fr)_auto] gap-3">
+        <div className="min-h-0 overflow-y-auto pr-1">
+          <div className="grid content-start gap-2">
           {cart.items.map((item) => (
             <CartLineItem
               key={item.id}
@@ -87,8 +88,10 @@ export function CartContent({ compact = false }: { compact?: boolean }) {
               selectable
             />
           ))}
+          </div>
         </div>
         <CartSummaryPanel
+          compact
           cart={cart}
           selectedItemIds={selectedItemIds}
           selectedItems={selectedItems}
