@@ -1,6 +1,6 @@
 import type { AuthTokens } from "@/lib/auth/types";
 
-const AUTH_STORAGE_KEY = "shopahso.auth.tokens";
+export const AUTH_STORAGE_KEY = "shopahso.auth.tokens";
 export const AUTH_STORAGE_EVENT = "shopahso.auth.changed";
 
 function emitAuthStorageEvent(tokens: AuthTokens | null) {

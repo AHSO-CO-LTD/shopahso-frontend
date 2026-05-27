@@ -1,5 +1,6 @@
 import { ApiError, apiRequest } from "@/lib/api/client";
 import type { ApiRequestOptions } from "@/lib/api/types";
+import { authenticatedApiRequest } from "@/lib/auth/authenticated-request";
 import { getStoredAuthTokens } from "@/lib/auth/storage";
 import { getStoredCartToken, setStoredCartToken } from "@/lib/cart/storage";
 import type { Cart } from "@/lib/cart/types";
@@ -27,7 +28,6 @@ function parseApiErrorMessage(error: unknown, fallbackMessage: string) {
 
 function getCartHeaders(includeJson = true): HeadersInit {
   const headers: Record<string, string> = {};
-  const accessToken = getStoredAuthTokens()?.accessToken;
   const cartToken = getStoredCartToken();
 
   if (includeJson) {
@@ -36,10 +36,6 @@ function getCartHeaders(includeJson = true): HeadersInit {
 
   if (cartToken) {
     headers["X-Cart-Token"] = cartToken;
-  }
-
-  if (accessToken) {
-    headers.Authorization = `Bearer ${accessToken}`;
   }
 
   return headers;
@@ -52,7 +48,8 @@ function syncGuestToken(cart: Cart) {
 }
 
 async function cartRequest<TCart extends Cart>(path: string, options: ApiRequestOptions) {
-  const cart = await apiRequest<TCart>(path, options);
+  const request = getStoredAuthTokens() ? authenticatedApiRequest : apiRequest;
+  const cart = await request<TCart>(path, options);
   syncGuestToken(cart);
   return cart;
 }

@@ -17,6 +17,7 @@ import {
   updateMyProfile,
 } from "@/lib/api/services/auth.service";
 import {
+  AUTH_STORAGE_KEY,
   AUTH_STORAGE_EVENT,
   clearStoredAuthTokens,
   getStoredAuthTokens,
@@ -132,23 +133,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    function handleAuthStorageChanged(event: Event) {
-      const customEvent = event as CustomEvent<AuthTokens | null>;
-      const nextTokens = customEvent.detail ?? getStoredAuthTokens();
-
+    function syncAuthState(nextTokens: AuthTokens | null) {
       setTokens(nextTokens);
 
       if (!nextTokens) {
+        setIsInitializing(false);
         startTransition(() => {
           setProfile(null);
         });
       }
     }
 
+    function handleAuthStorageChanged(event: Event) {
+      const customEvent = event as CustomEvent<AuthTokens | null>;
+      syncAuthState(customEvent.detail ?? getStoredAuthTokens());
+    }
+
+    function handleCrossTabAuthStorageChanged(event: StorageEvent) {
+      if (event.key !== AUTH_STORAGE_KEY) {
+        return;
+      }
+
+      syncAuthState(getStoredAuthTokens());
+    }
+
     window.addEventListener(AUTH_STORAGE_EVENT, handleAuthStorageChanged as EventListener);
+    window.addEventListener("storage", handleCrossTabAuthStorageChanged);
 
     return () => {
       window.removeEventListener(AUTH_STORAGE_EVENT, handleAuthStorageChanged as EventListener);
+      window.removeEventListener("storage", handleCrossTabAuthStorageChanged);
     };
   }, [startTransition]);
 
