@@ -49,7 +49,7 @@ export default function ConfirmModal({
   return createPortal(
     <div
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/25 px-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-foreground/25 px-4"
       role="dialog"
     >
       <div className="w-full max-w-md border border-border bg-background">
