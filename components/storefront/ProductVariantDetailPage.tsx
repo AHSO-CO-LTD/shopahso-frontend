@@ -2,10 +2,13 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { FileText } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import ProductDescriptionRenderer from "@/components/storefront/ProductDescriptionRenderer";
-import { getCatalogVariantBySlug } from "@/lib/api/services/catalog-variants.service";
+import RelatedVariantCarousel from "@/components/storefront/RelatedVariantCarousel";
+import { getCatalogProductBySlug, getCatalogVariantBySlug } from "@/lib/api/services/catalog-variants.service";
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
+import QuoteRequestModal from "@/components/quote-requests/QuoteRequestModal";
 import { getCatalogPricingDisplay } from "@/lib/catalog/pricing";
 import type { CatalogVariant, CatalogVariantAttributeValue } from "@/lib/catalog/types";
 import { FALLBACK_LOGO_IMAGE } from "@/lib/image-fallbacks";
@@ -15,7 +18,6 @@ type DisplaySpec = {
   key: string;
   label: string;
   value: string;
-  unit: string;
 };
 
 function prettifyCode(code: string) {
@@ -55,8 +57,12 @@ function formatMoney(value: string | number | null | undefined) {
 
 export default function ProductVariantDetailPage({ slug }: { slug: string }) {
   const [variant, setVariant] = useState<CatalogVariant | null>(null);
+  const [relatedVariants, setRelatedVariants] = useState<CatalogVariant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRelatedLoading, setIsRelatedLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [relatedErrorMessage, setRelatedErrorMessage] = useState<string | null>(null);
+  const [quoteVariant, setQuoteVariant] = useState<CatalogVariant | null>(null);
 
   const technicalSpecs = useMemo<DisplaySpec[]>(() => {
     if (!variant) {
@@ -90,18 +96,10 @@ export default function ProductVariantDetailPage({ slug }: { slug: string }) {
             || raw.attribute?.name?.trim()
             || prettifyCode(fallbackCode);
 
-          const unit =
-            item.definition?.unit
-            || raw.productAttributeDefinition?.unit
-            || raw.attribute?.unit
-            || raw.unit
-            || "";
-
           return {
             key: item.id ?? fallbackCode,
             label,
             value,
-            unit,
           };
         })
         .filter((item): item is DisplaySpec => item !== null);
@@ -129,7 +127,6 @@ export default function ProductVariantDetailPage({ slug }: { slug: string }) {
             key,
             label: key,
             value,
-            unit: "",
           };
         })
         .filter((item): item is DisplaySpec => item !== null);
@@ -157,11 +154,30 @@ export default function ProductVariantDetailPage({ slug }: { slug: string }) {
   useEffect(() => {
     async function loadVariant() {
       setIsLoading(true);
+      setIsRelatedLoading(false);
       setErrorMessage(null);
+      setRelatedErrorMessage(null);
+      setRelatedVariants([]);
 
       try {
         const response = await getCatalogVariantBySlug(slug);
         setVariant(response);
+
+        if (response.product.slug) {
+          setIsRelatedLoading(true);
+          try {
+            const productDetail = await getCatalogProductBySlug(response.product.slug);
+            setRelatedVariants(productDetail.variants ?? []);
+          } catch (productError) {
+            setRelatedErrorMessage(
+              productError instanceof Error
+                ? productError.message
+                : "Không thể tải danh sách sản phẩm cùng dòng.",
+            );
+          } finally {
+            setIsRelatedLoading(false);
+          }
+        }
       } catch (error) {
         setErrorMessage(error instanceof Error ? error.message : "Không thể tải chi tiết sản phẩm.");
       } finally {
@@ -191,8 +207,9 @@ export default function ProductVariantDetailPage({ slug }: { slug: string }) {
             {errorMessage ?? "Không tìm thấy sản phẩm."}
           </div>
         ) : (
-          <article className="grid gap-8 border border-border bg-background p-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-            <div>
+          <>
+            <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
+              <article className="border border-border bg-background p-6">
               <div className="mb-5 border border-border bg-muted/15">
                 <div className="relative aspect-[16/9] w-full">
                   <Image
@@ -209,11 +226,26 @@ export default function ProductVariantDetailPage({ slug }: { slug: string }) {
               </p>
               <h1 className="mt-2 text-3xl font-black tracking-tight">{variant.name}</h1>
               <p className="mt-2 text-sm text-muted-foreground">
-                Sản phẩm gốc: <span className="font-semibold text-foreground">{variant.product.name}</span>
+                Dòng sản phẩm: <span className="font-semibold text-foreground">{variant.product.name}</span>
               </p>
-              <span className={`mt-4 inline-flex border px-2 py-1 text-[11px] font-semibold ${getPricingStatusBadgeClass(variant.pricingStatus)}`}>
-                {getPricingStatusLabel(variant.pricingStatus)}
-              </span>
+              {requiresQuote ? (
+                <span className={`mt-4 inline-flex border px-2 py-1 text-[11px] font-semibold ${getPricingStatusBadgeClass(variant.pricingStatus)}`}>
+                  {getPricingStatusLabel(variant.pricingStatus)}
+                </span>
+              ) : null}
+
+              <section className="mt-6 border border-border">
+                <div className="border-b border-border bg-muted/20 px-4 py-3">
+                  <h2 className="text-sm font-semibold">Thông tin sản phẩm</h2>
+                </div>
+                <div className="grid gap-3 p-4 text-sm sm:grid-cols-2">
+                  <ProductInfoItem className="sm:col-span-2" label="SKU" value={variant.sku} />
+                  <ProductInfoItem label="Thương hiệu" value={variant.brand?.name ?? "Không gắn thương hiệu"} />
+                  <ProductInfoItem label="Xuất xứ" value={variant.originCountryCode ?? "Chưa có"} />
+                  <ProductInfoItem label="Tồn kho" value={String(variant.stockQuantity)} />
+                  <ProductInfoItem label="Số lượng đặt tối thiểu" value={String(variant.minOrderQuantity)} />
+                </div>
+              </section>
 
               <section className="mt-6 border border-border">
                 <div className="border-b border-border bg-muted/20 px-4 py-3">
@@ -226,28 +258,64 @@ export default function ProductVariantDetailPage({ slug }: { slug: string }) {
                 )}
               </section>
 
-              <div className="mt-6 grid gap-3 border border-border p-4 text-sm">
-                <p>
-                  SKU: <span className="font-semibold">{variant.sku}</span>
-                </p>
-                <p>
-                  Slug: <span className="font-semibold">{variant.slug}</span>
-                </p>
-                <p>
-                  Thương hiệu: <span className="font-semibold">{variant.brand?.name ?? "Không gắn thương hiệu"}</span>
-                </p>
-                <p>
-                  Xuất xứ: <span className="font-semibold">{variant.originCountryCode ?? "Chưa có"}</span>
-                </p>
-                <p>
-                  Tồn kho: <span className="font-semibold">{variant.stockQuantity}</span>
-                </p>
-                <p>
-                  Số lượng đặt tối thiểu: <span className="font-semibold">{variant.minOrderQuantity}</span>
-                </p>
-              </div>
+              </article>
+              <aside className="border border-border bg-muted/20 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:self-start lg:overflow-y-auto">
+              <section className="p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Giá bán</p>
+                {requiresQuote ? (
+                  <div className="mt-2">
+                    <p className="text-3xl font-black text-primary">Liên hệ báo giá</p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Sản phẩm này cần xác nhận giá theo số lượng, tồn kho và thời điểm đặt hàng.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="mt-2 text-3xl font-black text-primary">
+                      {formatMoney(taxPreview?.totalWithTax ?? variant.price)}
+                    </p>
+                    <div className="mt-4 grid gap-2 border border-border bg-background p-3 text-sm">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-muted-foreground">Giá trước thuế</span>
+                        <span className="font-semibold">{formatMoney(taxPreview?.effectivePrice ?? variant.price)}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-muted-foreground">Thuế</span>
+                        <span className="font-semibold">
+                          {taxPreview?.taxPercent ?? 0}% ({formatMoney(taxPreview?.taxAmount ?? 0)})
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 border-t border-border pt-2">
+                        <span className="font-semibold">Tổng sau thuế</span>
+                        <span className="font-black text-primary">{formatMoney(taxPreview?.totalWithTax ?? variant.price)}</span>
+                      </div>
+                    </div>
+                  </>
+                )}
+                <div className="mt-6 grid gap-2">
+                  {!requiresQuote ? (
+                    <AddToCartButton
+                      active={variant.active}
+                      className="h-11 w-full px-4"
+                      pricingStatus={variant.pricingStatus}
+                      stockQuantity={variant.stockQuantity}
+                      variantId={variant.id}
+                    />
+                  ) : null}
+                  {requiresQuote ? (
+                    <button
+                      className="inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 border border-yellow-500 bg-yellow-400 px-4 text-sm font-semibold text-foreground transition-colors hover:border-primary hover:bg-yellow-500"
+                      onClick={() => setQuoteVariant(variant)}
+                      type="button"
+                    >
+                      <FileText className="size-4" />
+                      Yêu cầu báo giá
+                    </button>
+                  ) : null}
+                </div>
+              </section>
 
-              <div className="mt-6 border border-border">
+              <section className="border-t border-border bg-background">
                 <div className="border-b border-border bg-muted/20 px-4 py-3">
                   <h2 className="text-sm font-semibold">Thông số kỹ thuật</h2>
                 </div>
@@ -255,81 +323,65 @@ export default function ProductVariantDetailPage({ slug }: { slug: string }) {
                   <p className="px-4 py-3 text-sm text-muted-foreground">Sản phẩm chưa có thông số kỹ thuật.</p>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="w-full min-w-[520px] border-collapse text-sm">
+                    <table className="w-full table-fixed border-collapse text-sm">
                       <thead>
                         <tr className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                          <th className="border-b border-border px-4 py-2 text-left">Tên thông số</th>
-                          <th className="border-b border-border px-4 py-2 text-left">Giá trị</th>
-                          <th className="w-24 border-b border-border px-4 py-2 text-left">Đơn vị</th>
+                          <th className="w-2/3 border-b border-border px-4 py-2 text-left">Tên thông số</th>
+                          <th className="w-1/3 border-b border-border px-4 py-2 text-left">Giá trị</th>
                         </tr>
                       </thead>
                       <tbody>
                         {technicalSpecs.map((spec) => (
                           <tr key={spec.key} className="border-t border-border">
-                            <td className="px-4 py-2">{spec.label}</td>
-                            <td className="px-4 py-2 font-medium">{spec.value}</td>
-                            <td className="px-4 py-2 text-muted-foreground">{spec.unit || "-"}</td>
+                            <td className="break-words px-4 py-2 text-muted-foreground">{spec.label}</td>
+                            <td className="break-words px-4 py-2 font-medium">{spec.value}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
                 )}
-              </div>
+              </section>
+              </aside>
             </div>
-            <aside className="border border-border bg-muted/20 p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Giá bán</p>
-              {requiresQuote ? (
-                <div className="mt-2">
-                  <p className="text-3xl font-black text-primary">Liên hệ báo giá</p>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Sản phẩm này cần xác nhận giá theo số lượng, tồn kho và thời điểm đặt hàng.
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <p className="mt-2 text-3xl font-black text-primary">
-                    {formatMoney(taxPreview?.totalWithTax ?? variant.price)}
-                  </p>
-                  <div className="mt-4 grid gap-2 border border-border bg-background p-3 text-sm">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-muted-foreground">Giá trước thuế</span>
-                      <span className="font-semibold">{formatMoney(taxPreview?.effectivePrice ?? variant.price)}</span>
-                    </div>
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-muted-foreground">Thuế</span>
-                      <span className="font-semibold">
-                        {taxPreview?.taxPercent ?? 0}% ({formatMoney(taxPreview?.taxAmount ?? 0)})
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between gap-3 border-t border-border pt-2">
-                      <span className="font-semibold">Tổng sau thuế</span>
-                      <span className="font-black text-primary">{formatMoney(taxPreview?.totalWithTax ?? variant.price)}</span>
-                    </div>
-                  </div>
-                </>
-              )}
-              <div className="mt-6 grid gap-2">
-                {!requiresQuote ? (
-                  <AddToCartButton
-                    active={variant.active}
-                    className="h-11 w-full px-4"
-                    pricingStatus={variant.pricingStatus}
-                    stockQuantity={variant.stockQuantity}
-                    variantId={variant.id}
-                  />
-                ) : null}
-                <button
-                  className="inline-flex h-11 w-full cursor-pointer items-center justify-center border border-border bg-background px-4 text-sm font-semibold transition-colors hover:border-primary hover:text-primary"
-                  type="button"
-                >
-                  Liên hệ đặt hàng
-                </button>
+            {relatedErrorMessage ? (
+              <div className="mt-8 border border-border bg-background p-4 text-sm text-muted-foreground">
+                {relatedErrorMessage}
               </div>
-            </aside>
-          </article>
+            ) : (
+              <RelatedVariantCarousel
+                currentVariantId={variant.id}
+                isLoading={isRelatedLoading}
+                productName={variant.product.name}
+                variants={relatedVariants}
+                onRequestQuote={setQuoteVariant}
+              />
+            )}
+          </>
         )}
       </section>
+      <QuoteRequestModal
+        open={Boolean(quoteVariant)}
+        variant={quoteVariant}
+        onClose={() => setQuoteVariant(null)}
+      />
     </main>
+  );
+}
+
+function ProductInfoItem({
+  className = "",
+  label,
+  value,
+}: {
+  className?: string;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className={`min-w-0 border border-border bg-background px-3 py-2 ${className}`}>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
+      <p className="mt-1 break-words font-semibold">{value}</p>
+    </div>
   );
 }

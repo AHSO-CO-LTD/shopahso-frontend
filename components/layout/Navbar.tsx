@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import {
   ChevronDown,
   ClipboardList,
+  FileText,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -332,6 +333,15 @@ const Navbar = () => {
                     <ClipboardList className="size-4" />
                     <span>Đơn hàng của tôi</span>
                   </Link>
+                  <Link
+                    href="/tai-khoan/yeu-cau-bao-gia"
+                    role="menuitem"
+                    className="flex w-full items-center gap-3 px-3 py-3 text-sm font-semibold transition-colors hover:bg-muted"
+                    onClick={() => setIsAccountMenuOpen(false)}
+                  >
+                    <FileText className="size-4" />
+                    <span>Yêu cầu báo giá</span>
+                  </Link>
                   {profile.role === "ADMIN" ? (
                     <Link
                       href="/admin"
@@ -451,6 +461,7 @@ const Navbar = () => {
                   <div className="grid border border-border bg-background">
                     <MobileMenuItem href="/tai-khoan" icon={<UserCircle className="size-4" />} label="Hồ sơ của tôi" onSelect={closeMobileMenu} />
                     <MobileMenuItem href="/don-hang" icon={<ClipboardList className="size-4" />} label="Đơn hàng của tôi" onSelect={closeMobileMenu} />
+                    <MobileMenuItem href="/tai-khoan/yeu-cau-bao-gia" icon={<FileText className="size-4" />} label="Yêu cầu báo giá" onSelect={closeMobileMenu} />
                     {profile.role === "ADMIN" ? (
                       <MobileMenuItem href="/admin" icon={<LayoutDashboard className="size-4" />} label="Trang quản trị" onSelect={closeMobileMenu} />
                     ) : null}

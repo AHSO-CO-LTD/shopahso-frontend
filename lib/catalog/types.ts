@@ -130,3 +130,7 @@ export type CatalogProductFilterOption = {
   name: string;
   slug: string;
 };
+
+export type CatalogProductDetail = CatalogVariantProduct & {
+  variants: CatalogVariant[];
+};

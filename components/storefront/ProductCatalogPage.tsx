@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import CatalogVariantCard from "@/components/storefront/CatalogVariantCard";
+import QuoteRequestModal from "@/components/quote-requests/QuoteRequestModal";
 import {
   listCatalogBrands,
   listCatalogCategoriesTree,
@@ -65,6 +66,7 @@ export default function ProductCatalogPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
+  const [quoteVariant, setQuoteVariant] = useState<CatalogVariant | null>(null);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -514,6 +516,7 @@ export default function ProductCatalogPage() {
               {variants.map((variant) => (
                 <CatalogVariantCard
                   key={variant.id}
+                  onRequestQuote={setQuoteVariant}
                   variant={variant}
                 />
               ))}
@@ -529,6 +532,11 @@ export default function ProductCatalogPage() {
           </>
         )}
       </section>
+      <QuoteRequestModal
+        open={Boolean(quoteVariant)}
+        variant={quoteVariant}
+        onClose={() => setQuoteVariant(null)}
+      />
     </main>
   );
 }

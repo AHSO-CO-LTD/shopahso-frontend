@@ -2,13 +2,20 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { FileText } from "lucide-react";
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
 import { formatCatalogMoney, getCatalogPricingDisplay } from "@/lib/catalog/pricing";
 import type { CatalogVariant } from "@/lib/catalog/types";
 import { FALLBACK_LOGO_IMAGE } from "@/lib/image-fallbacks";
 import { isContactForPrice } from "@/lib/pricing-status";
 
-export default function CatalogVariantCard({ variant }: { variant: CatalogVariant }) {
+export default function CatalogVariantCard({
+  onRequestQuote,
+  variant,
+}: {
+  onRequestQuote?: (variant: CatalogVariant) => void;
+  variant: CatalogVariant;
+}) {
   const router = useRouter();
   const requiresQuote = isContactForPrice(variant.pricingStatus);
   const isOutOfStock = !requiresQuote && variant.stockQuantity <= 0;
@@ -114,7 +121,19 @@ export default function CatalogVariantCard({ variant }: { variant: CatalogVarian
               stockQuantity={variant.stockQuantity}
               variantId={variant.id}
             />
-          ) : null}
+          ) : (
+            <button
+              aria-label={`Yêu cầu báo giá ${variant.name}`}
+              className="relative z-20 inline-flex size-11 shrink-0 cursor-pointer items-center justify-center border border-yellow-500 bg-yellow-400 text-foreground transition-[background-color,border-color,transform] duration-200 hover:-translate-y-0.5 hover:border-primary hover:bg-yellow-500"
+              onClick={(event) => {
+                event.stopPropagation();
+                onRequestQuote?.(variant);
+              }}
+              type="button"
+            >
+              <FileText className="size-4" />
+            </button>
+          )}
         </div>
       </div>
     </article>

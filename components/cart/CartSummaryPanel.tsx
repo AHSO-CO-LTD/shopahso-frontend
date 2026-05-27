@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CreditCard, ShoppingCart, Trash2 } from "lucide-react";
-import { toast } from "sonner";
 import ConfirmModal from "@/components/common/ConfirmModal";
 import { useCart } from "@/components/cart/CartProvider";
 import { formatCartMoney } from "@/components/cart/cart-format";
@@ -37,20 +36,16 @@ export function CartSummaryPanel({
   const hasUnavailableItem = checkoutItems.some((item) => !item.available);
   const hasQuoteItem = checkoutItems.some((item) => isContactForPrice(item.current.pricingStatus ?? item.variant.pricingStatus));
   const totalLabel = hasSelectedItems ? formatCartMoney(summary.totalCurrentWithTax ?? summary.subtotalCurrent) : "Chưa chọn sản phẩm";
+  const checkoutBlockReason = !hasSelectedItems
+    ? "Chọn sản phẩm để tiếp tục đặt hàng."
+    : hasUnavailableItem
+      ? "Có sản phẩm không khả dụng. Vui lòng xóa hoặc cập nhật trước khi đặt hàng."
+      : hasQuoteItem
+        ? "Có sản phẩm cần báo giá, chưa thể checkout trực tiếp."
+        : null;
 
   function handleCheckout() {
-    if (!hasSelectedItems) {
-      toast.warning("Vui lòng chọn ít nhất một sản phẩm để checkout.");
-      return;
-    }
-
-    if (hasUnavailableItem) {
-      toast.warning("Có sản phẩm đã chọn không khả dụng. Vui lòng cập nhật giỏ hàng trước khi checkout.");
-      return;
-    }
-
-    if (hasQuoteItem) {
-      toast.warning("Có sản phẩm cần báo giá. Vui lòng liên hệ AHSO trước khi checkout.");
+    if (checkoutBlockReason) {
       return;
     }
 

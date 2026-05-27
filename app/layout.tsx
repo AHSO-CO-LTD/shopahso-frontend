@@ -106,7 +106,21 @@ export default function RootLayout({
         />
         <AuthProvider>
           <AppChrome>{children}</AppChrome>
-          <Toaster position="top-right" offset="96px" richColors />
+          <Toaster
+            duration={2200}
+            gap={8}
+            offset={16}
+            position="bottom-right"
+            richColors
+            toastOptions={{
+              classNames: {
+                description: "text-xs text-muted-foreground",
+                title: "text-sm font-semibold",
+                toast: "rounded-none border border-border bg-background text-foreground shadow-none",
+              },
+            }}
+            visibleToasts={2}
+          />
         </AuthProvider>
       </body>
     </html>
