@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import { useCart } from "@/components/cart/CartProvider";
 import { formatCartMoney, formatTaxSource } from "@/components/cart/cart-format";
+import { getCartItemPricing } from "@/components/cart/cart-pricing";
 import type { CartItem } from "@/lib/cart/types";
 import { FALLBACK_LOGO_IMAGE } from "@/lib/image-fallbacks";
 import { isContactForPrice } from "@/lib/pricing-status";
@@ -30,7 +31,8 @@ export function CartLineItem({
   const canEditQuantity = !isMutating && item.available && !requiresQuote;
   const imageUrl = item.snapshot.imageUrl || item.variant.imageUrls?.[0] || FALLBACK_LOGO_IMAGE;
   const isFallbackImage = imageUrl === FALLBACK_LOGO_IMAGE;
-  const totalPrice = item.current.totalWithTax ?? item.current.subtotal;
+  const pricing = getCartItemPricing(item);
+  const totalPrice = pricing.totalWithTax;
   const taxPercent = item.current.tax?.percent ?? "0";
   const stockLabel = `${maxQuantity} ${item.variant.unit ?? ""}`.trim();
 
@@ -90,15 +92,25 @@ export function CartLineItem({
           <p className="mt-1 truncate font-mono text-[11px] text-muted-foreground">SKU: {item.variant.sku}</p>
 
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <p className="text-base font-black leading-none text-primary">
+            <p className={`text-base font-black leading-none ${pricing.isDiscounted ? "text-red-700" : "text-primary"}`}>
               {requiresQuote ? "Liên hệ báo giá" : formatCartMoney(totalPrice)}
             </p>
+            {!requiresQuote && pricing.isDiscounted && pricing.discountPercent !== null ? (
+              <span className="border border-red-700 bg-red-600 px-2 py-0.5 text-[10px] font-black text-white">
+                -{pricing.discountPercent}%
+              </span>
+            ) : null}
             {!requiresQuote ? (
               <span className="border border-border bg-muted/20 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
                 Đã kèm {taxPercent}% thuế
               </span>
             ) : null}
           </div>
+          {!requiresQuote && pricing.isDiscounted && pricing.originalUnitPrice !== null ? (
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Giá gốc: <span className="font-semibold line-through">{formatCartMoney(pricing.originalUnitPrice)}</span>
+            </p>
+          ) : null}
 
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] text-muted-foreground">
             <span>
@@ -208,25 +220,35 @@ export function CartLineItem({
               Giá đã thay đổi
             </span>
           ) : null}
+          {!requiresQuote && pricing.isDiscounted && pricing.discountPercent !== null ? (
+            <span className="border border-red-700 bg-red-600 px-2 py-1 text-[11px] font-black text-white">
+              -{pricing.discountPercent}%
+            </span>
+          ) : null}
         </div>
 
         <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-xs text-muted-foreground">Giá hiện tại</p>
-            <p className="text-base font-black text-primary">
-              {requiresQuote ? "Liên hệ báo giá" : formatCartMoney(item.current.effectivePrice)}
+            <p className={`text-base font-black ${pricing.isDiscounted ? "text-red-700" : "text-primary"}`}>
+              {requiresQuote ? "Liên hệ báo giá" : formatCartMoney(pricing.unitPrice)}
             </p>
+            {!requiresQuote && pricing.isDiscounted && pricing.originalUnitPrice !== null ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Giá gốc: <span className="font-semibold line-through">{formatCartMoney(pricing.originalUnitPrice)}</span>
+              </p>
+            ) : null}
             {!requiresQuote && item.current.tax ? (
               <p className="mt-1 text-xs text-muted-foreground">
                 Thuế {item.current.tax.percent}%:{" "}
-                <span className="font-semibold text-foreground">{formatCartMoney(item.current.tax.amount)}</span>{" "}
+                <span className="font-semibold text-foreground">{formatCartMoney(pricing.taxAmount)}</span>{" "}
                 ({formatTaxSource(item.current.tax.source)})
               </p>
             ) : null}
-            {!requiresQuote && item.current.totalWithTax ? (
+            {!requiresQuote && item.current.tax ? (
               <p className="text-xs text-muted-foreground">
                 Tổng sau thuế:{" "}
-                <span className="font-semibold text-foreground">{formatCartMoney(item.current.totalWithTax)}</span>
+                <span className="font-semibold text-foreground">{formatCartMoney(pricing.totalWithTax)}</span>
               </p>
             ) : null}
             {item.priceChanged ? (

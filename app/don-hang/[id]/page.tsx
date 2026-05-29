@@ -1,4 +1,4 @@
-import UserOrderDetailPage from "@/components/orders/UserOrderDetailPage";
+import { redirect } from "next/navigation";
 
 export const metadata = {
   title: "Chi tiết đơn hàng | ShopAHSO",
@@ -11,5 +11,5 @@ export default async function OrderDetailRoute({
 }) {
   const { id } = await params;
 
-  return <UserOrderDetailPage orderId={id} />;
+  redirect(`/tai-khoan/don-hang/${id}`);
 }

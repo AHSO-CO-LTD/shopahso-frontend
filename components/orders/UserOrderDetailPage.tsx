@@ -138,7 +138,7 @@ export default function UserOrderDetailPage({ orderId }: { orderId: string }) {
       <section className="container mx-auto px-4 py-10 lg:py-12">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <Button asChild className="h-9 px-3 text-xs font-semibold" variant="outline">
-            <Link href="/don-hang">
+            <Link href="/tai-khoan/don-hang">
               <ArrowLeft className="size-4" />
               Quay lại đơn hàng
             </Link>

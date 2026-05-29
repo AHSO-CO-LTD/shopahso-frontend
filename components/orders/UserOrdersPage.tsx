@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertCircle, ClipboardList, Eye, Filter, PackageSearch, RefreshCw, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
+import AccountNavigation from "@/components/account/AccountNavigation";
 import { formatCartMoney } from "@/components/cart/cart-format";
 import {
   formatOrderDate,
@@ -109,9 +110,6 @@ export default function UserOrdersPage() {
               Tài khoản người dùng
             </p>
             <h1 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl lg:text-4xl">Đơn hàng của tôi</h1>
-            <p className="mt-2 hidden text-sm text-muted-foreground sm:block">
-              Theo dõi toàn bộ đơn hàng, trạng thái thanh toán và tiến độ giao hàng.
-            </p>
           </div>
           <Button
             className="h-9 shrink-0 cursor-pointer px-3 text-xs font-semibold sm:h-10 sm:px-4 sm:text-sm"
@@ -124,6 +122,7 @@ export default function UserOrdersPage() {
             <span className="hidden sm:inline">Làm mới</span>
           </Button>
         </header>
+        <AccountNavigation />
 
         <section className="mb-4 grid grid-cols-3 gap-2 sm:mb-6 sm:gap-3">
           <Metric label="Tổng đơn" value={String(orders.length)} />
@@ -209,7 +208,7 @@ function OrderRow({ order }: { order: CheckoutOrder }) {
   return (
     <article>
       <Link
-        href={`/don-hang/${order.id}`}
+        href={`/tai-khoan/don-hang/${order.id}`}
         className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 px-3 py-3 transition-colors hover:bg-muted/30 lg:hidden"
       >
         <div className="min-w-0">
@@ -234,7 +233,7 @@ function OrderRow({ order }: { order: CheckoutOrder }) {
         <p className="whitespace-nowrap text-sm font-black text-primary">{formatCartMoney(order.grandTotalAmount)}</p>
         <div className="flex justify-end">
           <Button asChild className="h-9 cursor-pointer px-3 text-xs font-semibold" variant="outline">
-            <Link href={`/don-hang/${order.id}`}>
+            <Link href={`/tai-khoan/don-hang/${order.id}`}>
               <Eye className="size-4" />
               Chi tiết
             </Link>
