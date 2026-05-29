@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertCircle, Eye, FileText, Filter, PackageSearch, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import AccountNavigation from "@/components/account/AccountNavigation";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -99,9 +100,6 @@ export default function UserQuoteRequestsPage() {
               Tài khoản người dùng
             </p>
             <h1 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl lg:text-4xl">Yêu cầu báo giá của tôi</h1>
-            <p className="mt-2 hidden text-sm text-muted-foreground sm:block">
-              Theo dõi sản phẩm cần báo giá, trạng thái xử lý và ghi chú phản hồi từ nhân viên.
-            </p>
           </div>
           <Button
             className="h-9 shrink-0 cursor-pointer rounded-none px-3 text-xs font-semibold sm:h-10 sm:px-4 sm:text-sm"
@@ -114,6 +112,7 @@ export default function UserQuoteRequestsPage() {
             <span className="hidden sm:inline">Làm mới</span>
           </Button>
         </header>
+        <AccountNavigation />
 
         <section className="mb-4 grid grid-cols-3 gap-2 sm:mb-6 sm:gap-3">
           <Metric label="Tổng yêu cầu" value={String(metrics.total)} />

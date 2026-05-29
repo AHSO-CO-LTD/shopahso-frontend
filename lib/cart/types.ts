@@ -22,6 +22,7 @@ export type CartPriceSnapshot = {
   variantName: string;
   price: string;
   salePrice: string | null;
+  discountPercent?: string | number | null;
   pricingStatus?: PricingStatus;
   effectivePrice: string;
   imageUrl: string | null;
@@ -31,6 +32,7 @@ export type CartPriceSnapshot = {
 export type CartCurrentPrice = {
   price: string;
   salePrice: string | null;
+  discountPercent?: string | number | null;
   pricingStatus?: PricingStatus;
   effectivePrice: string;
   subtotal: string;

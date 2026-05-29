@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { gsap } from "gsap";
 import { Check, Edit3, MapPin, Plus, Save, Star, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
+import AccountNavigation from "@/components/account/AccountNavigation";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import ConfirmModal from "@/components/common/ConfirmModal";
@@ -312,6 +313,7 @@ export default function UserProfilePage() {
     <main className="border-t border-border bg-background">
       <section className="container mx-auto px-3 py-4 sm:px-4 sm:py-8 lg:py-12">
         <ProfilePageHeader />
+        <AccountNavigation />
 
         <div className="grid gap-3 sm:gap-4 lg:gap-6 xl:grid-cols-[minmax(280px,340px)_minmax(0,1fr)]">
           <UserInfoPanel
@@ -444,9 +446,6 @@ function ProfilePageHeader() {
         Tài khoản người dùng
       </p>
       <h1 className="mt-1 text-xl font-black tracking-tight sm:mt-2 sm:text-3xl lg:text-4xl">Hồ sơ của tôi</h1>
-      <p className="mt-1 hidden max-w-2xl text-sm leading-6 text-muted-foreground sm:block">
-        Quản lý thông tin tài khoản và địa chỉ giao hàng dùng cho checkout.
-      </p>
     </header>
   );
 }

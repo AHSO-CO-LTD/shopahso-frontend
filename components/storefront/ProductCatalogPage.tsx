@@ -512,7 +512,7 @@ export default function ProductCatalogPage() {
           </div>
         ) : (
           <>
-            <div className="grid min-h-[24rem] content-start grid-cols-1 gap-3 min-[520px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid min-h-[24rem] content-start grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4 xl:grid-cols-6">
               {variants.map((variant) => (
                 <CatalogVariantCard
                   key={variant.id}
@@ -579,22 +579,22 @@ function PaginationControls({
 
 function CatalogSkeleton() {
   return (
-    <div className="grid min-h-[24rem] content-start grid-cols-1 gap-3 min-[520px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="grid min-h-[24rem] content-start grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4 xl:grid-cols-6">
       {Array.from({ length: 8 }).map((_, index) => (
         <article key={`catalog-skeleton-${index}`} className="flex flex-col border border-border bg-background">
           <Skeleton className="aspect-[4/3] w-full" />
-          <div className="space-y-2 border-b border-border px-4 py-3">
+          <div className="space-y-2 border-b border-border px-2 py-2 sm:px-4 sm:py-3">
             <Skeleton className="h-3 w-24" />
             <Skeleton className="h-5 w-full" />
             <Skeleton className="h-5 w-4/5" />
           </div>
-          <div className="flex flex-1 flex-col gap-2 px-4 py-4">
+          <div className="flex flex-1 flex-col gap-2 px-2 py-3 sm:px-4 sm:py-4">
             <Skeleton className="h-3 w-3/5" />
             <Skeleton className="h-3 w-4/5" />
             <Skeleton className="h-3 w-2/5" />
             <Skeleton className="mt-1 h-6 w-1/2" />
           </div>
-          <div className="border-t border-border px-4 py-3">
+          <div className="border-t border-border px-2 py-2 sm:px-4 sm:py-3">
             <Skeleton className="h-9 w-full" />
           </div>
         </article>

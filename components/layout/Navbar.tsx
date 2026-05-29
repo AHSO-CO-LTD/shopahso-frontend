@@ -8,8 +8,6 @@ import { gsap } from "gsap";
 import { toast } from "sonner";
 import {
   ChevronDown,
-  ClipboardList,
-  FileText,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -322,25 +320,7 @@ const Navbar = () => {
                     onClick={() => setIsAccountMenuOpen(false)}
                   >
                     <UserCircle className="size-4" />
-                    <span>Hồ sơ của tôi</span>
-                  </Link>
-                  <Link
-                    href="/don-hang"
-                    role="menuitem"
-                    className="flex w-full items-center gap-3 px-3 py-3 text-sm font-semibold transition-colors hover:bg-muted"
-                    onClick={() => setIsAccountMenuOpen(false)}
-                  >
-                    <ClipboardList className="size-4" />
-                    <span>Đơn hàng của tôi</span>
-                  </Link>
-                  <Link
-                    href="/tai-khoan/yeu-cau-bao-gia"
-                    role="menuitem"
-                    className="flex w-full items-center gap-3 px-3 py-3 text-sm font-semibold transition-colors hover:bg-muted"
-                    onClick={() => setIsAccountMenuOpen(false)}
-                  >
-                    <FileText className="size-4" />
-                    <span>Yêu cầu báo giá</span>
+                    <span>Hồ sơ</span>
                   </Link>
                   {profile.role === "ADMIN" ? (
                     <Link
@@ -459,9 +439,7 @@ const Navbar = () => {
                     <p className="mt-1 truncate text-sm font-semibold">{profile.email}</p>
                   </div>
                   <div className="grid border border-border bg-background">
-                    <MobileMenuItem href="/tai-khoan" icon={<UserCircle className="size-4" />} label="Hồ sơ của tôi" onSelect={closeMobileMenu} />
-                    <MobileMenuItem href="/don-hang" icon={<ClipboardList className="size-4" />} label="Đơn hàng của tôi" onSelect={closeMobileMenu} />
-                    <MobileMenuItem href="/tai-khoan/yeu-cau-bao-gia" icon={<FileText className="size-4" />} label="Yêu cầu báo giá" onSelect={closeMobileMenu} />
+                    <MobileMenuItem href="/tai-khoan" icon={<UserCircle className="size-4" />} label="Hồ sơ" onSelect={closeMobileMenu} />
                     {profile.role === "ADMIN" ? (
                       <MobileMenuItem href="/admin" icon={<LayoutDashboard className="size-4" />} label="Trang quản trị" onSelect={closeMobileMenu} />
                     ) : null}

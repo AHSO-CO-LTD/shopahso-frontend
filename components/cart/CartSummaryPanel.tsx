@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { CreditCard, ShoppingCart, Trash2 } from "lucide-react";
 import ConfirmModal from "@/components/common/ConfirmModal";
 import { useCart } from "@/components/cart/CartProvider";
+import { buildCartSummaryFromItems } from "@/components/cart/cart-selection";
 import { formatCartMoney } from "@/components/cart/cart-format";
 import { setStoredCheckoutItemIds } from "@/lib/checkout/storage";
 import type { Cart, CartItem, CartSummary } from "@/lib/cart/types";
@@ -31,7 +32,7 @@ export function CartSummaryPanel({
   const [isClearModalOpen, setIsClearModalOpen] = useState(false);
   const checkoutItemIds = selectedItemIds ?? cart.items.map((item) => item.id);
   const checkoutItems = selectedItems ?? cart.items;
-  const summary = selectedSummary ?? cart.summary;
+  const summary = selectedSummary ?? buildCartSummaryFromItems(checkoutItems);
   const hasSelectedItems = checkoutItemIds.length > 0;
   const hasUnavailableItem = checkoutItems.some((item) => !item.available);
   const hasQuoteItem = checkoutItems.some((item) => isContactForPrice(item.current.pricingStatus ?? item.variant.pricingStatus));
