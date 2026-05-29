@@ -1,4 +1,4 @@
-import { Boxes, ClipboardList, ShoppingCart, Tags, Users } from "lucide-react";
+import { Boxes, ClipboardList, FileText, ShoppingCart, Tags, Users } from "lucide-react";
 
 export const staffNavigation = [
   {
@@ -15,6 +15,11 @@ export const staffNavigation = [
     icon: ClipboardList,
     label: "Đơn hàng",
     href: "/nhan-vien/don-hang",
+  },
+  {
+    icon: FileText,
+    label: "Báo giá",
+    href: "/nhan-vien/bao-gia",
   },
   {
     icon: Boxes,

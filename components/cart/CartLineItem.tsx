@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useMemo, useState } from "react";
 import { Minus, Plus, Trash2 } from "lucide-react";
-import { toast } from "sonner";
 import { useCart } from "@/components/cart/CartProvider";
 import { formatCartMoney, formatTaxSource } from "@/components/cart/cart-format";
 import type { CartItem } from "@/lib/cart/types";
@@ -36,12 +36,10 @@ export function CartLineItem({
 
   function handleQuantityChange(nextQuantity: number) {
     if (nextQuantity < minQuantity) {
-      toast.warning("Bạn đã chạm giới hạn tối thiểu của sản phẩm này.");
       return;
     }
 
     if (nextQuantity > maxQuantity) {
-      toast.warning("Bạn đã chạm giới hạn tối đa của sản phẩm này.");
       return;
     }
 
@@ -274,53 +272,98 @@ function QuantityStepper({
   quantity: number;
   size?: "default" | "compact";
 }) {
+  const [inputFeedback, setInputFeedback] = useState<string | null>(null);
   const buttonSizeClass = size === "compact" ? "size-7" : "size-9";
   const inputSizeClass = size === "compact" ? "h-7 w-10 text-xs" : "h-9 w-14 text-sm";
   const iconSizeClass = size === "compact" ? "size-3.5" : "size-4";
+  const isAtMinQuantity = quantity <= minQuantity;
+  const isAtMaxQuantity = quantity >= maxQuantity;
+  const quantityFeedback = useMemo(() => {
+    if (!canEditQuantity) {
+      return null;
+    }
+
+    if (isAtMaxQuantity) {
+      return `Đã đạt số lượng tối đa trong kho (${maxQuantity}).`;
+    }
+
+    if (isAtMinQuantity && minQuantity > 1) {
+      return `Số lượng đặt tối thiểu là ${minQuantity}.`;
+    }
+
+    return null;
+  }, [canEditQuantity, isAtMaxQuantity, isAtMinQuantity, maxQuantity, minQuantity]);
+
+  function showInputFeedback(message: string) {
+    setInputFeedback(message);
+    window.setTimeout(() => {
+      setInputFeedback((currentMessage) => (currentMessage === message ? null : currentMessage));
+    }, 1800);
+  }
 
   return (
-    <div className={`${size === "compact" ? "mt-2" : ""} flex w-fit items-center border border-border`}>
-      <button
-        type="button"
-        className={`inline-flex ${buttonSizeClass} items-center justify-center transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40`}
-        disabled={!canEditQuantity}
-        onClick={() => onQuantityChange(quantity - 1)}
-        aria-label="Giảm số lượng"
-      >
-        <Minus className={iconSizeClass} />
-      </button>
-      <input
-        key={`${itemId}-${quantity}`}
-        className={`input-no-spin border-x border-border bg-background text-center font-semibold outline-none focus:bg-muted/30 ${inputSizeClass}`}
-        disabled={isMutating}
-        min={minQuantity}
-        max={maxQuantity}
-        onBlur={(event) => {
-          const nextQuantity = Number(event.currentTarget.value);
-          if (!Number.isInteger(nextQuantity)) {
-            event.currentTarget.value = String(quantity);
-            return;
-          }
-          onQuantityChange(nextQuantity);
-        }}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") {
-            event.currentTarget.blur();
-          }
-        }}
-        type="number"
-        defaultValue={quantity}
-        aria-label="Số lượng"
-      />
-      <button
-        type="button"
-        className={`inline-flex ${buttonSizeClass} items-center justify-center transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40`}
-        disabled={!canEditQuantity}
-        onClick={() => onQuantityChange(quantity + 1)}
-        aria-label="Tăng số lượng"
-      >
-        <Plus className={iconSizeClass} />
-      </button>
+    <div className={size === "compact" ? "mt-2" : ""}>
+      <div className="flex w-fit items-center border border-border">
+        <button
+          type="button"
+          className={`inline-flex ${buttonSizeClass} items-center justify-center transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40`}
+          disabled={!canEditQuantity || isAtMinQuantity}
+          onClick={() => onQuantityChange(quantity - 1)}
+          aria-label="Giảm số lượng"
+        >
+          <Minus className={iconSizeClass} />
+        </button>
+        <input
+          key={`${itemId}-${quantity}`}
+          aria-invalid={Boolean(inputFeedback)}
+          className={`input-no-spin border-x border-border bg-background text-center font-semibold outline-none focus:bg-muted/30 ${inputSizeClass}`}
+          disabled={isMutating}
+          min={minQuantity}
+          max={maxQuantity}
+          onBlur={(event) => {
+            const nextQuantity = Number(event.currentTarget.value);
+            if (!Number.isInteger(nextQuantity)) {
+              event.currentTarget.value = String(quantity);
+              showInputFeedback("Vui lòng nhập số lượng hợp lệ.");
+              return;
+            }
+            if (nextQuantity < minQuantity) {
+              event.currentTarget.value = String(quantity);
+              showInputFeedback(`Số lượng đặt tối thiểu là ${minQuantity}.`);
+              return;
+            }
+            if (nextQuantity > maxQuantity) {
+              event.currentTarget.value = String(quantity);
+              showInputFeedback(`Tối đa ${maxQuantity} sản phẩm trong kho.`);
+              return;
+            }
+            setInputFeedback(null);
+            onQuantityChange(nextQuantity);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.currentTarget.blur();
+            }
+          }}
+          type="number"
+          defaultValue={quantity}
+          aria-label="Số lượng"
+        />
+        <button
+          type="button"
+          className={`inline-flex ${buttonSizeClass} items-center justify-center transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40`}
+          disabled={!canEditQuantity || isAtMaxQuantity}
+          onClick={() => onQuantityChange(quantity + 1)}
+          aria-label="Tăng số lượng"
+        >
+          <Plus className={iconSizeClass} />
+        </button>
+      </div>
+      {inputFeedback || quantityFeedback ? (
+        <p className="mt-1 max-w-44 text-[11px] font-semibold leading-4 text-muted-foreground">
+          {inputFeedback ?? quantityFeedback}
+        </p>
+      ) : null}
     </div>
   );
 }

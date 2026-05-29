@@ -4,6 +4,7 @@ import type { CategoryTreeNode } from "@/lib/category/types";
 import type {
   CatalogFeaturedBrand,
   CatalogFeaturedProduct,
+  CatalogProductDetail,
   CatalogProductFilterOption,
   CatalogVariant,
   CatalogVariantSearchResponse,
@@ -46,6 +47,12 @@ export function searchCatalogVariants(query: CatalogVariantSearchQuery) {
 
 export function getCatalogVariantBySlug(slug: string) {
   return apiRequest<CatalogVariant>(`/catalog/variants/${slug}`, {
+    method: "GET",
+  });
+}
+
+export function getCatalogProductBySlug(slug: string) {
+  return apiRequest<CatalogProductDetail>(`/catalog/products/${slug}`, {
     method: "GET",
   });
 }

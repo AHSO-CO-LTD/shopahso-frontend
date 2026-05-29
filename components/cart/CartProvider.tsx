@@ -95,22 +95,28 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [refreshCart]);
 
   const applyCartMutation = useCallback(
-    async (mutation: () => Promise<Cart>, successMessage: string) => {
+    async (mutation: () => Promise<Cart>, successMessage: string | null) => {
       setIsMutating(true);
       setErrorMessage(null);
-      const loadingToastId = toast.loading("Đang cập nhật giỏ hàng...");
+      const loadingToastId = successMessage ? toast.loading("Đang cập nhật giỏ hàng...") : null;
 
       try {
         const nextCart = await mutation();
         startTransition(() => {
           setCart(nextCart);
         });
-        toast.success(successMessage, { id: loadingToastId });
+        if (successMessage && loadingToastId) {
+          toast.success(successMessage, { id: loadingToastId });
+        }
         notifyPriceChange(nextCart);
       } catch (error) {
         const message = error instanceof Error ? error.message : "Không thể cập nhật giỏ hàng.";
         setErrorMessage(message);
-        toast.error(message, { id: loadingToastId });
+        if (loadingToastId) {
+          toast.error(message, { id: loadingToastId });
+        } else {
+          toast.error(message);
+        }
       } finally {
         setIsMutating(false);
       }
@@ -133,7 +139,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       removeItem: (itemId) => applyCartMutation(() => removeCartItem(itemId), "Đã xóa sản phẩm khỏi giỏ hàng."),
       setDrawerOpen: setIsDrawerOpen,
       updateQuantity: (itemId, quantity) =>
-        applyCartMutation(() => updateCartItemQuantity(itemId, quantity), "Đã cập nhật số lượng."),
+        applyCartMutation(() => updateCartItemQuantity(itemId, quantity), null),
     }),
     [applyCartMutation, cart, errorMessage, isDrawerOpen, isLoading, isMutating, refreshCart],
   );
