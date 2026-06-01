@@ -8,6 +8,7 @@ import StaffLayout from "@/components/staff/StaffLayout";
 import { Button } from "@/components/ui/button";
 import { getBackofficeProduct } from "@/lib/api/services/products.service";
 import { deleteBackofficeVariant } from "@/lib/api/services/variants.service";
+import { getVariantEngagementMetrics } from "@/lib/catalog/variant-metrics";
 import { getPricingStatusBadgeClass, getPricingStatusLabel } from "@/lib/pricing-status";
 import type { ProductDetail, VariantSummary } from "@/lib/product/types";
 
@@ -106,7 +107,10 @@ export default function StaffProductVariantList({ productId }: { productId: stri
                 <p className="text-right">Thao tác</p>
               </div>
               <ul className="divide-y divide-border border-x border-b border-border">
-                {productDetail.variants.map((variant) => (
+                {productDetail.variants.map((variant) => {
+                  const engagement = getVariantEngagementMetrics(variant);
+
+                  return (
                   <li key={variant.id} className="grid grid-cols-[minmax(0,1fr)_100px_140px] items-center gap-3 px-4 py-4">
                     <div className="min-w-0">
                       <div className="mb-2 flex h-14 w-20 items-center justify-center border border-border bg-muted/15 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
@@ -128,7 +132,7 @@ export default function StaffProductVariantList({ productId }: { productId: stri
                         Đơn vị: {variant.unit || "N/A"}
                       </p>
                       <p className="truncate text-xs text-muted-foreground">
-                        MOQ: {variant.minOrderQuantity} | Điểm: {variant.score} | Xem: {variant.viewCount} | Mua: {variant.orderCount}
+                        MOQ: {variant.minOrderQuantity} | Điểm: {variant.score} | Xem: {engagement.viewCount} | Mua: {engagement.orderCount} | Đánh giá: {engagement.ratingAverage.toFixed(1)} ({engagement.ratingCount})
                       </p>
                     </div>
                     <p className="text-center text-xs font-semibold">{variant.active ? "Hoạt động" : "Tạm ẩn"}</p>
@@ -141,7 +145,8 @@ export default function StaffProductVariantList({ productId }: { productId: stri
                       </Button>
                     </div>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             </div>
           )}

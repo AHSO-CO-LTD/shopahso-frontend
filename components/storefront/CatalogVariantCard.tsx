@@ -2,9 +2,11 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { FileText } from "lucide-react";
+import { Eye, FileText, ShoppingCart, Star } from "lucide-react";
+import type { ReactNode } from "react";
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
 import { formatCatalogMoney } from "@/lib/catalog/pricing";
+import { getVariantEngagementMetrics } from "@/lib/catalog/variant-metrics";
 import type { CatalogVariant } from "@/lib/catalog/types";
 import { FALLBACK_LOGO_IMAGE } from "@/lib/image-fallbacks";
 import { isContactForPrice } from "@/lib/pricing-status";
@@ -23,6 +25,7 @@ export default function CatalogVariantCard({
   const isFallbackImage = imageUrl === FALLBACK_LOGO_IMAGE;
   const regularPrice = toCatalogNumber(variant.price);
   const salePrice = toCatalogNumber(variant.salePrice);
+  const engagement = getVariantEngagementMetrics(variant);
   const discountPercent = getDiscountPercent({
     discountPercent: variant.discountPercent,
     price: regularPrice,
@@ -101,11 +104,27 @@ export default function CatalogVariantCard({
               -{discountPercent}%
             </span>
           ) : null}
-          {!isOutOfStock && requiresQuote ? (
-            <span className="border border-yellow-500 bg-yellow-400 px-1.5 py-1 text-[9px] font-black uppercase tracking-[0.1em] text-foreground sm:px-2 sm:text-[10px] sm:tracking-[0.14em]">
-              Báo giá
-            </span>
-          ) : null}
+        </div>
+        <div className="pointer-events-none absolute right-2 top-2 z-0 sm:right-3 sm:top-3">
+          <ImageMetric
+            icon={<Eye aria-hidden="true" className="size-3.5" />}
+            label={`${engagement.viewCount.toLocaleString("vi-VN")} lượt xem`}
+            value={engagement.viewCount.toLocaleString("vi-VN")}
+          />
+        </div>
+        <div className="pointer-events-none absolute bottom-2 left-2 z-0 sm:bottom-3 sm:left-3">
+          <ImageMetric
+            icon={<Star aria-hidden="true" className="size-3.5 fill-yellow-400 text-yellow-500" />}
+            label={`${engagement.ratingAverage.toFixed(1)} sao, ${engagement.ratingCount} đánh giá thật`}
+            value={engagement.ratingAverage.toFixed(1)}
+          />
+        </div>
+        <div className="pointer-events-none absolute bottom-2 right-2 z-0 sm:bottom-3 sm:right-3">
+          <ImageMetric
+            icon={<ShoppingCart aria-hidden="true" className="size-3.5" />}
+            label={`${engagement.orderCount.toLocaleString("vi-VN")} lượt mua`}
+            value={engagement.orderCount.toLocaleString("vi-VN")}
+          />
         </div>
       </div>
 
@@ -166,12 +185,29 @@ function ProductMetaItem({ label, value }: { label: string; value: string }) {
   );
 }
 
+function ImageMetric({
+  icon,
+  label,
+  value,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1 bg-background/90 px-1.5 py-1 text-[10px] font-black text-foreground shadow-[0_4px_12px_rgba(15,23,42,0.12)] sm:text-[11px]">
+      {icon}
+      <span className="tabular-nums">{value}</span>
+      <span className="sr-only">{label}</span>
+    </span>
+  );
+}
+
 function CatalogPrice({ variant }: { variant: CatalogVariant }) {
   if (isContactForPrice(variant.pricingStatus)) {
     return (
       <div className="min-w-0">
         <p className="text-sm font-black text-primary sm:text-lg xl:text-base">Liên hệ báo giá</p>
-        <p className="mt-1 hidden text-xs text-muted-foreground sm:block">Giá xác nhận theo số lượng và thời điểm đặt hàng.</p>
       </div>
     );
   }

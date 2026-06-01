@@ -4,8 +4,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { FileText } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import ProductDescriptionRenderer from "@/components/storefront/ProductDescriptionRenderer";
 import RelatedVariantCarousel from "@/components/storefront/RelatedVariantCarousel";
+import VariantEngagementMetrics from "@/components/storefront/VariantEngagementMetrics";
 import { getCatalogProductBySlug, getCatalogVariantBySlug } from "@/lib/api/services/catalog-variants.service";
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
 import QuoteRequestModal from "@/components/quote-requests/QuoteRequestModal";
@@ -169,17 +171,20 @@ export default function ProductVariantDetailPage({ slug }: { slug: string }) {
             const productDetail = await getCatalogProductBySlug(response.product.slug);
             setRelatedVariants(productDetail.variants ?? []);
           } catch (productError) {
-            setRelatedErrorMessage(
+            const message =
               productError instanceof Error
                 ? productError.message
-                : "Không thể tải danh sách sản phẩm cùng dòng.",
-            );
+                : "Không thể tải danh sách sản phẩm cùng dòng.";
+            setRelatedErrorMessage(message);
+            toast.error(message);
           } finally {
             setIsRelatedLoading(false);
           }
         }
       } catch (error) {
-        setErrorMessage(error instanceof Error ? error.message : "Không thể tải chi tiết sản phẩm.");
+        const message = error instanceof Error ? error.message : "Không thể tải chi tiết sản phẩm.";
+        setErrorMessage(message);
+        toast.error(message);
       } finally {
         setIsLoading(false);
       }
@@ -228,6 +233,7 @@ export default function ProductVariantDetailPage({ slug }: { slug: string }) {
               <p className="mt-2 text-sm text-muted-foreground">
                 Dòng sản phẩm: <span className="font-semibold text-foreground">{variant.product.name}</span>
               </p>
+              <VariantEngagementMetrics className="mt-4" variant={variant} />
               {requiresQuote ? (
                 <span className={`mt-4 inline-flex border px-2 py-1 text-[11px] font-semibold ${getPricingStatusBadgeClass(variant.pricingStatus)}`}>
                   {getPricingStatusLabel(variant.pricingStatus)}

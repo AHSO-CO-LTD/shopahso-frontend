@@ -6,6 +6,7 @@ import { FileText } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
 import { gsap } from "gsap";
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
+import VariantEngagementMetrics from "@/components/storefront/VariantEngagementMetrics";
 import { formatCatalogMoney, getCatalogPricingDisplay } from "@/lib/catalog/pricing";
 import type { CatalogVariant } from "@/lib/catalog/types";
 import { FALLBACK_LOGO_IMAGE } from "@/lib/image-fallbacks";
@@ -160,6 +161,7 @@ function RelatedVariantCard({
             <p className="text-sm font-black text-primary">{formatCatalogMoney(pricing.totalWithTax)}</p>
           )}
         </div>
+        <VariantEngagementMetrics className="mt-3" compact variant={variant} />
         <div className="mt-auto pt-3">
           {requiresQuote ? (
             <button

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { toast } from "sonner";
+import VariantEngagementMetrics from "@/components/storefront/VariantEngagementMetrics";
 import { listCatalogNewestProducts } from "@/lib/api/services/catalog-variants.service";
 import { formatCatalogMoney, getCatalogPricingDisplay } from "@/lib/catalog/pricing";
 import type { CatalogFeaturedProduct } from "@/lib/catalog/types";
@@ -64,6 +66,7 @@ function ArrivalCard({ product }: { product: CatalogFeaturedProduct }) {
             <p className="text-[11px] text-muted-foreground">Đã gồm thuế {pricing.taxPercent}%</p>
           </div>
         ) : null}
+        {topVariant ? <VariantEngagementMetrics compact variant={topVariant} /> : null}
         <Link
           href={`/san-pham/${topVariant?.slug ?? product.slug}`}
           className="mt-2 inline-flex cursor-pointer border border-border px-4 py-2 text-xs font-semibold transition-colors hover:border-primary hover:bg-primary hover:text-white"
@@ -89,6 +92,7 @@ const NewArrivals = () => {
         setArrivals(response.slice(0, 10));
       } catch {
         setArrivals([]);
+        toast.error("Không thể tải sản phẩm mới");
       }
     }
 

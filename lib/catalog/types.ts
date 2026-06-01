@@ -32,6 +32,23 @@ export type CatalogVariantPricing = {
   totalWithTax: string;
 };
 
+export type CatalogVariantRating = {
+  average: string;
+  count: number;
+  total: string;
+  baselineAverage: string;
+  baselineCounted: boolean;
+};
+
+export type CatalogVariantEngagement = {
+  viewCount?: number;
+  orderCount?: number;
+  ratingAverage?: string | number;
+  ratingCount?: number;
+  ratingTotal?: string | number;
+  rating?: CatalogVariantRating | null;
+};
+
 export type CatalogVariantAttributeValue = {
   id?: string;
   code: string;
@@ -48,7 +65,7 @@ export type CatalogVariantAttributeValue = {
   };
 };
 
-export type CatalogVariant = {
+export type CatalogVariant = CatalogVariantEngagement & {
   id: string;
   slug: string;
   sku: string;
@@ -107,6 +124,12 @@ export type CatalogFeaturedProduct = {
     sku: string;
     name: string;
     slug: string;
+    viewCount?: number;
+    orderCount?: number;
+    ratingAverage?: string | number;
+    ratingCount?: number;
+    ratingTotal?: string | number;
+    rating?: CatalogVariantRating | null;
     pricingStatus?: PricingStatus;
     imageUrls: string[];
     effectiveImageUrls?: string[];

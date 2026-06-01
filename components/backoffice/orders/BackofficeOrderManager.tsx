@@ -20,10 +20,9 @@ import {
 } from "@/components/orders/order-display";
 import {
   cancelBackofficeOrder,
-  confirmBackofficeOrderPayment,
   listBackofficeOrders,
   rejectBackofficeOrder,
-  rejectBackofficeOrderPayment,
+  reviewBackofficeOrderPayment,
   updateBackofficeOrderFulfillment,
   updateBackofficeOrderStaffNote,
   type BackofficeOrderFilters,
@@ -160,7 +159,7 @@ function getActionToast(action: ActionKey) {
     case "cancel":
       return "Đã hủy đơn hàng.";
     case "confirm-payment":
-      return "Đã xác nhận thanh toán.";
+      return "Đã duyệt thanh toán và cập nhật lượt mua.";
     case "reject-payment":
       return "Đã từ chối thanh toán.";
     case "staff-note":
@@ -277,7 +276,13 @@ export function BackofficeOrderManager() {
       return;
     }
 
-    const loadingToastId = toast.loading("Đang cập nhật đơn hàng...");
+    const loadingToastId = toast.loading(
+      activeAction === "confirm-payment"
+        ? "Đang duyệt thanh toán..."
+        : activeAction === "reject-payment"
+          ? "Đang từ chối thanh toán..."
+          : "Đang cập nhật đơn hàng...",
+    );
 
     try {
       setIsSubmitting(true);
@@ -294,9 +299,16 @@ export function BackofficeOrderManager() {
           : activeAction === "cancel"
             ? await cancelBackofficeOrder(selectedOrder.id, reasonPayload)
             : activeAction === "confirm-payment"
-              ? await confirmBackofficeOrderPayment(selectedOrder.id, notePayload)
+              ? await reviewBackofficeOrderPayment(selectedOrder.id, {
+                  action: "APPROVE",
+                  staffNote: notePayload.staffNote,
+                })
               : activeAction === "reject-payment"
-                ? await rejectBackofficeOrderPayment(selectedOrder.id, reasonPayload)
+                ? await reviewBackofficeOrderPayment(selectedOrder.id, {
+                    action: "REJECT",
+                    rejectReason: reasonPayload.reason,
+                    staffNote: reasonPayload.staffNote,
+                  })
                 : activeAction === "staff-note"
                   ? await updateBackofficeOrderStaffNote(selectedOrder.id, notePayload)
                   : await updateBackofficeOrderFulfillment(selectedOrder.id, {
