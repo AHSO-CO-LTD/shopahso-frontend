@@ -11,7 +11,7 @@ import VariantEngagementMetrics from "@/components/storefront/VariantEngagementM
 import { getCatalogProductBySlug, getCatalogVariantBySlug } from "@/lib/api/services/catalog-variants.service";
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
 import QuoteRequestModal from "@/components/quote-requests/QuoteRequestModal";
-import { getCatalogPricingDisplay } from "@/lib/catalog/pricing";
+import { getCatalogVariantPricingDisplay } from "@/lib/catalog/pricing";
 import type { CatalogVariant, CatalogVariantAttributeValue } from "@/lib/catalog/types";
 import { FALLBACK_LOGO_IMAGE } from "@/lib/image-fallbacks";
 import { getPricingStatusBadgeClass, getPricingStatusLabel, isContactForPrice } from "@/lib/pricing-status";
@@ -142,9 +142,11 @@ export default function ProductVariantDetailPage({ slug }: { slug: string }) {
       return null;
     }
 
-    return getCatalogPricingDisplay({
-      fallbackPrice: variant.salePrice ?? variant.price,
+    return getCatalogVariantPricingDisplay({
+      discountPercent: variant.discountPercent,
+      price: variant.price,
       pricing: variant.pricing,
+      salePrice: variant.salePrice,
       tax: variant.tax,
     });
   }, [variant]);
@@ -278,9 +280,29 @@ export default function ProductVariantDetailPage({ slug }: { slug: string }) {
                 ) : (
                   <>
                     <p className="mt-2 text-3xl font-black text-primary">
-                      {formatMoney(taxPreview?.totalWithTax ?? variant.price)}
+                      {formatMoney(taxPreview?.effectivePrice ?? variant.price)}
                     </p>
                     <div className="mt-4 grid gap-2 border border-border bg-background p-3 text-sm">
+                      {taxPreview?.isDiscounted ? (
+                        <>
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-muted-foreground">Giá gốc</span>
+                            <span className="font-semibold line-through">{formatMoney(taxPreview.originalPrice)}</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-muted-foreground">Ưu đãi</span>
+                            <span className="font-black text-red-700">
+                              {taxPreview.discountBadge || "Đang áp dụng"}
+                            </span>
+                          </div>
+                          {taxPreview.discountSourceLabel ? (
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-muted-foreground">Nguồn giảm</span>
+                              <span className="font-semibold">{taxPreview.discountSourceLabel}</span>
+                            </div>
+                          ) : null}
+                        </>
+                      ) : null}
                       <div className="flex items-center justify-between gap-3">
                         <span className="text-muted-foreground">Giá trước thuế</span>
                         <span className="font-semibold">{formatMoney(taxPreview?.effectivePrice ?? variant.price)}</span>

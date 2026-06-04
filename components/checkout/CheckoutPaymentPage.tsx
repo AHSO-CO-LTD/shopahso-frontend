@@ -52,7 +52,7 @@ export function CheckoutPaymentPage() {
         : await confirmPublicOrderPayment({ orderCode: order.orderCode, email: order.customerEmail });
       setStoredCheckoutOrder(nextOrder);
       setOrder(nextOrder);
-      toast.success("Đã gửi xác nhận thanh toán.", { id: loadingToastId });
+      toast.success("Đã gửi xác nhận thanh toán. Shop sẽ kiểm tra và phản hồi sớm.", { id: loadingToastId });
       router.push("/checkout/result");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Không thể xác nhận thanh toán.", {

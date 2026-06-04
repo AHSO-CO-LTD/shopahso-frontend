@@ -38,6 +38,13 @@ export function listCatalogVariants(query: CatalogVariantQuery = {}) {
   });
 }
 
+export function listCatalogFeaturedVariants(query: CatalogVariantQuery = {}) {
+  return apiRequest<CatalogVariant[]>("/catalog/variants/featured", {
+    method: "GET",
+    query,
+  });
+}
+
 export function searchCatalogVariants(query: CatalogVariantSearchQuery) {
   return apiRequest<CatalogVariantSearchResponse>("/catalog/variants/search", {
     method: "GET",

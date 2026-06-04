@@ -1,4 +1,5 @@
 import type { PricingStatus } from "@/lib/pricing-status";
+import type { PricingDiscount } from "@/lib/pricing-discount";
 
 export type CatalogVariantCategory = {
   id: string;
@@ -27,6 +28,8 @@ export type CatalogVariantTax = {
 };
 
 export type CatalogVariantPricing = {
+  discount?: PricingDiscount | null;
+  discountAmount?: string;
   effectivePrice: string;
   taxAmount: string;
   totalWithTax: string;
@@ -131,6 +134,9 @@ export type CatalogFeaturedProduct = {
     ratingTotal?: string | number;
     rating?: CatalogVariantRating | null;
     pricingStatus?: PricingStatus;
+    price?: number | string;
+    salePrice?: number | string | null;
+    discountPercent?: number | string | null;
     imageUrls: string[];
     effectiveImageUrls?: string[];
     tax?: CatalogVariantTax | null;

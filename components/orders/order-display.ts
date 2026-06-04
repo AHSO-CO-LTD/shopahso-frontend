@@ -97,6 +97,6 @@ export function getFulfillmentStatusLabel(status: string | null | undefined) {
 export function canConfirmOrderPayment(order: CheckoutOrder) {
   return (
     order.paymentMethod === "BANK_TRANSFER" &&
-    ["WAITING_CUSTOMER_TRANSFER", "UNPAID", "PENDING"].includes(order.paymentStatus)
+    order.paymentStatus === "WAITING_CUSTOMER_TRANSFER"
   );
 }

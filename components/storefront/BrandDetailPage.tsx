@@ -1,15 +1,14 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import BrandDetailHeader from "@/components/storefront/BrandDetailHeader";
 import CatalogVariantCard from "@/components/storefront/CatalogVariantCard";
 import { listCatalogBrands, searchCatalogVariants } from "@/lib/api/services/catalog-variants.service";
 import type { Brand } from "@/lib/brand/types";
 import type { CatalogVariant } from "@/lib/catalog/types";
-import { FALLBACK_LOGO_IMAGE } from "@/lib/image-fallbacks";
 
-type BrandDisplay = Pick<Brand, "name" | "slug" | "logoUrl">;
+type BrandDisplay = Pick<Brand, "name" | "slug" | "logoUrl" | "bannerUrl">;
 
 export default function BrandDetailPage({ slug }: { slug: string }) {
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -89,26 +88,7 @@ export default function BrandDetailPage({ slug }: { slug: string }) {
           <div className="border border-border p-8 text-sm text-muted-foreground">Không tìm thấy thương hiệu.</div>
         ) : (
           <>
-            <header className="mb-8 border border-border bg-muted/15 px-4 py-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Thương hiệu</p>
-              <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-center">
-                <div className="flex h-16 w-full items-center justify-center border border-border bg-background px-2 sm:w-40">
-                  <div className="relative h-10 w-full">
-                    <Image
-                      alt={`Logo ${selectedBrand.name}`}
-                      className="object-contain"
-                      fill
-                      sizes="160px"
-                      src={selectedBrand.logoUrl ?? FALLBACK_LOGO_IMAGE}
-                    />
-                  </div>
-                </div>
-                <div className="min-w-0">
-                  <h1 className="text-3xl font-black tracking-tight lg:text-4xl">{selectedBrand.name}</h1>
-                  <p className="mt-2 text-sm text-muted-foreground">Tổng biến thể đang mở bán: {variants.length}</p>
-                </div>
-              </div>
-            </header>
+            <BrandDetailHeader brand={selectedBrand} variantCount={variants.length} />
 
             {variants.length === 0 ? (
               <div className="border border-border p-8 text-sm text-muted-foreground">

@@ -1,4 +1,4 @@
-import { Boxes, ClipboardList, FileText, ShoppingCart, Tags, Users } from "lucide-react";
+import { Boxes, ClipboardList, FileImage, FileText, ShoppingCart, Tags, TicketPercent, Users } from "lucide-react";
 
 export const staffNavigation = [
   {
@@ -20,6 +20,16 @@ export const staffNavigation = [
     icon: FileText,
     label: "Báo giá",
     href: "/nhan-vien/bao-gia",
+  },
+  {
+    icon: TicketPercent,
+    label: "Khuyến mãi",
+    href: "/nhan-vien/khuyen-mai",
+  },
+  {
+    icon: FileImage,
+    label: "Banner",
+    href: "/nhan-vien/banner",
   },
   {
     icon: Boxes,

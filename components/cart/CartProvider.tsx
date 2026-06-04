@@ -17,6 +17,7 @@ import {
   removeCartItem,
   updateCartItemQuantity,
 } from "@/lib/api/services/cart.service";
+import { hasCartItemUnitPriceChanged } from "@/components/cart/cart-pricing";
 import { AUTH_STORAGE_EVENT } from "@/lib/auth/storage";
 import { CART_STORAGE_EVENT } from "@/lib/cart/storage";
 import type { Cart } from "@/lib/cart/types";
@@ -40,8 +41,8 @@ type CartContextValue = {
 const CartContext = createContext<CartContextValue | null>(null);
 
 function notifyPriceChange(cart: Cart) {
-  if (cart.summary.priceChanged) {
-    toast.warning("Một số sản phẩm trong giỏ đã thay đổi giá.");
+  if (cart.items.some(hasCartItemUnitPriceChanged)) {
+    toast.warning("Giá sản phẩm đã thay đổi, vui lòng kiểm tra lại đơn hàng.");
   }
 }
 

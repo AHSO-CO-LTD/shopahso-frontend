@@ -22,9 +22,10 @@ function ProductCard({ product, large = false }: { product: CatalogFeaturedProdu
   const imageUrl = product.effectiveImageUrls?.[0] ?? FALLBACK_LOGO_IMAGE;
   const isFallbackImage = imageUrl === FALLBACK_LOGO_IMAGE;
   const pricing = topVariant?.pricing
-    ? getCatalogPricingDisplay({
-        fallbackPrice: topVariant.pricing.totalWithTax,
+        ? getCatalogPricingDisplay({
+        fallbackPrice: topVariant.pricing.effectivePrice,
         pricing: topVariant.pricing,
+        regularPrice: topVariant.price,
         tax: topVariant.tax,
       })
     : null;
@@ -64,8 +65,13 @@ function ProductCard({ product, large = false }: { product: CatalogFeaturedProdu
         </div>
         {pricing ? (
           <div>
-            <p className="text-sm font-black text-primary">{formatCatalogMoney(pricing.totalWithTax)}</p>
-            <p className="text-[11px] text-muted-foreground">Đã gồm thuế {pricing.taxPercent}%</p>
+            <p className={`text-sm font-black ${pricing.isDiscounted ? "text-red-700" : "text-primary"}`}>
+              {formatCatalogMoney(pricing.effectivePrice)}
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              {pricing.isDiscounted && pricing.discountBadge ? `${pricing.discountBadge} | ` : ""}
+              Thuế {pricing.taxPercent}%
+            </p>
           </div>
         ) : null}
         {topVariant ? <VariantEngagementMetrics compact variant={topVariant} /> : null}

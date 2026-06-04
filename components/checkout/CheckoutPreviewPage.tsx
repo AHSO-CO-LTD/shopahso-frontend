@@ -55,7 +55,7 @@ export function CheckoutPreviewPage() {
       if (!response.canCheckout) {
         const hasQuoteIssue = response.items?.some((item) => item.issues?.some((issue) => issue.code === "CONTACT_FOR_PRICE"))
           || response.issues?.some((issue) => issue.code === "CONTACT_FOR_PRICE");
-        toast.warning(hasQuoteIssue ? "Có sản phẩm cần báo giá, chưa thể checkout trực tiếp." : "Có sản phẩm cần kiểm tra trước khi đặt hàng.");
+        toast.warning(hasQuoteIssue ? "Có sản phẩm cần báo giá, chưa thể checkout trực tiếp." : "Một số sản phẩm chưa đủ điều kiện thanh toán.");
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Không thể tạo bản xem trước đơn hàng.");

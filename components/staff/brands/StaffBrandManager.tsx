@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import ConfirmModal from "@/components/common/ConfirmModal";
+import { validateBrandImageFile } from "@/components/staff/brands/brand-media-validation";
 import BrandForm, { DEFAULT_BRAND_FORM_VALUE, type BrandFormValue } from "@/components/staff/brands/BrandForm";
 import StaffLayout from "@/components/staff/StaffLayout";
 import ImageUploadFieldset from "@/components/staff/products/ImageUploadFieldset";
@@ -13,12 +14,49 @@ import {
   deleteBackofficeBrand,
   listBackofficeBrands,
   updateBackofficeBrand,
+  uploadBackofficeBrandBanner,
   uploadBackofficeBrandLogo,
 } from "@/lib/api/services/brands.service";
 import type { Brand, CreateBrandPayload } from "@/lib/brand/types";
 
 function sortBrands(items: Brand[]) {
   return [...items].sort((a, b) => a.name.localeCompare(b.name, "vi"));
+}
+
+function getBrandApiErrorMessage(error: unknown, fallback: string) {
+  if (!(error instanceof ApiError)) {
+    return error instanceof Error ? error.message : fallback;
+  }
+
+  if (error.status === 401) {
+    return "Phiên đăng nhập đã hết hạn.";
+  }
+
+  if (error.status === 403) {
+    return "Bạn không có quyền cập nhật thương hiệu.";
+  }
+
+  if (error.status === 404) {
+    return "Không tìm thấy thương hiệu.";
+  }
+
+  if (error.status === 408) {
+    return "Upload mất nhiều thời gian hơn dự kiến. Banner có thể vẫn đang được xử lý, vui lòng tải lại danh sách sau vài giây.";
+  }
+
+  if (error.status >= 500) {
+    return fallback;
+  }
+
+  try {
+    const parsed = JSON.parse(error.details || error.message) as { message?: string | string[] };
+    if (Array.isArray(parsed.message)) {
+      return parsed.message.join(", ");
+    }
+    return parsed.message || fallback;
+  } catch {
+    return error.message || fallback;
+  }
 }
 
 export default function StaffBrandManager() {
@@ -32,11 +70,17 @@ export default function StaffBrandManager() {
   const [searchKeyword, setSearchKeyword] = useState("");
 
   const [selectedLogoFiles, setSelectedLogoFiles] = useState<File[]>([]);
+  const [selectedBannerFiles, setSelectedBannerFiles] = useState<File[]>([]);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [isUploadingBanner, setIsUploadingBanner] = useState(false);
 
   const selectedLogoPreviewUrls = useMemo(
     () => selectedLogoFiles.map((file) => URL.createObjectURL(file)),
     [selectedLogoFiles],
+  );
+  const selectedBannerPreviewUrls = useMemo(
+    () => selectedBannerFiles.map((file) => URL.createObjectURL(file)),
+    [selectedBannerFiles],
   );
 
   const loadBrands = useCallback(async () => {
@@ -64,6 +108,12 @@ export default function StaffBrandManager() {
     };
   }, [selectedLogoPreviewUrls]);
 
+  useEffect(() => {
+    return () => {
+      selectedBannerPreviewUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [selectedBannerPreviewUrls]);
+
   const handleReloadBrands = () => {
     void loadBrands();
   };
@@ -79,6 +129,7 @@ export default function StaffBrandManager() {
     return {
       name: selectedBrand.name,
       slug: selectedBrand.slug,
+      bannerUrl: selectedBrand.bannerUrl ?? "",
       active: selectedBrand.active,
     };
   }, [selectedBrand]);
@@ -98,25 +149,46 @@ export default function StaffBrandManager() {
       return;
     }
 
+    const logoValidationError = selectedLogoFiles.length > 0 ? validateBrandImageFile(selectedLogoFiles[0], "logo thương hiệu") : null;
+    if (logoValidationError) {
+      toast.warning(logoValidationError);
+      return;
+    }
+
+    const bannerValidationError = selectedBannerFiles.length > 0 ? validateBrandImageFile(selectedBannerFiles[0], "banner thương hiệu") : null;
+    if (bannerValidationError) {
+      toast.warning(bannerValidationError);
+      return;
+    }
+
     setIsSubmitting(true);
     const loadingId = toast.loading("Đang tạo thương hiệu...");
 
     try {
       const createdBrand = await createBackofficeBrand(payload);
       let nextBrand = createdBrand;
+      const uploadErrors: string[] = [];
 
       if (selectedLogoFiles.length > 0 && selectedLogoFiles[0]) {
         try {
           nextBrand = await uploadBackofficeBrandLogo(createdBrand.id, selectedLogoFiles[0]);
-          toast.success("Tạo thương hiệu và tải logo thành công.", { id: loadingId });
         } catch (logoError) {
-          toast.warning(
-            logoError instanceof Error
-              ? `Tạo thương hiệu thành công nhưng tải logo thất bại: ${logoError.message}`
-              : "Tạo thương hiệu thành công nhưng tải logo thất bại. Vui lòng thử lại.",
-            { id: loadingId },
-          );
+          uploadErrors.push(`logo: ${getBrandApiErrorMessage(logoError, "không thể tải logo thương hiệu")}`);
         }
+      }
+
+      if (selectedBannerFiles.length > 0 && selectedBannerFiles[0]) {
+        try {
+          nextBrand = await uploadBackofficeBrandBanner(createdBrand.id, selectedBannerFiles[0]);
+        } catch (bannerError) {
+          uploadErrors.push(`banner: ${getBrandApiErrorMessage(bannerError, "không thể tải banner thương hiệu")}`);
+        }
+      }
+
+      if (uploadErrors.length > 0) {
+        toast.warning(`Đã tạo thương hiệu nhưng upload lỗi ${uploadErrors.join("; ")}.`, { id: loadingId });
+      } else if (selectedLogoFiles.length > 0 || selectedBannerFiles.length > 0) {
+        toast.success("Tạo thương hiệu và tải ảnh thương hiệu thành công.", { id: loadingId });
       } else {
         toast.success("Tạo thương hiệu thành công.", { id: loadingId });
       }
@@ -124,12 +196,9 @@ export default function StaffBrandManager() {
       setBrands((current) => sortBrands([...current, nextBrand]));
       setEditingBrandId(nextBrand.id);
       setSelectedLogoFiles([]);
+      setSelectedBannerFiles([]);
     } catch (error) {
-      if (error instanceof ApiError) {
-        toast.error(error.message, { id: loadingId });
-      } else {
-        toast.error("Không thể tạo thương hiệu.", { id: loadingId });
-      }
+      toast.error(getBrandApiErrorMessage(error, "Không thể tạo thương hiệu."), { id: loadingId });
     } finally {
       setIsSubmitting(false);
     }
@@ -145,7 +214,7 @@ export default function StaffBrandManager() {
         setBrands((current) => sortBrands(current.map((item) => (item.id === updatedBrand.id ? updatedBrand : item))));
         toast.success("Cập nhật thương hiệu thành công.", { id: loadingId });
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Không thể cập nhật thương hiệu.", { id: loadingId });
+        toast.error(getBrandApiErrorMessage(error, "Không thể cập nhật thương hiệu."), { id: loadingId });
       } finally {
         setIsSubmitting(false);
       }
@@ -170,12 +239,13 @@ export default function StaffBrandManager() {
       if (editingBrandId === deletedBrand.id) {
         setEditingBrandId("");
         setSelectedLogoFiles([]);
+        setSelectedBannerFiles([]);
       }
 
       toast.success("Đã ẩn thương hiệu.", { id: loadingId });
       setDeletingBrand(null);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Không thể ẩn thương hiệu.", { id: loadingId });
+      toast.error(getBrandApiErrorMessage(error, "Không thể ẩn thương hiệu."), { id: loadingId });
     } finally {
       setIsDeleting(false);
     }
@@ -193,8 +263,9 @@ export default function StaffBrandManager() {
     }
 
     const logoFile = selectedLogoFiles[0];
-    if (!logoFile) {
-      toast.warning("Không tìm thấy file logo hợp lệ.");
+    const validationError = validateBrandImageFile(logoFile, "logo thương hiệu");
+    if (validationError) {
+      toast.warning(validationError);
       return;
     }
 
@@ -206,7 +277,7 @@ export default function StaffBrandManager() {
       setSelectedLogoFiles([]);
       toast.success("Tải logo thương hiệu thành công.", { id: loadingId });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Không thể tải logo thương hiệu.", { id: loadingId });
+      toast.error(getBrandApiErrorMessage(error, "Không thể tải logo thương hiệu."), { id: loadingId });
     } finally {
       setIsUploadingLogo(false);
     }
@@ -221,7 +292,65 @@ export default function StaffBrandManager() {
     if (files.length > 1) {
       toast.warning("Logo thương hiệu chỉ nhận 1 ảnh, hệ thống sẽ lấy ảnh đầu tiên.");
     }
+
+    const validationError = validateBrandImageFile(files[0], "logo thương hiệu");
+    if (validationError) {
+      toast.warning(validationError);
+      return;
+    }
+
     setSelectedLogoFiles([files[0]!]);
+  };
+
+  const handleUploadBrandBanner = async () => {
+    if (!selectedBrand) {
+      toast.warning("Vui lòng chọn thương hiệu trước khi tải banner.");
+      return;
+    }
+
+    if (selectedBannerFiles.length === 0) {
+      toast.warning("Vui lòng chọn banner trước khi tải lên.");
+      return;
+    }
+
+    const bannerFile = selectedBannerFiles[0];
+    const validationError = validateBrandImageFile(bannerFile, "banner thương hiệu");
+    if (validationError) {
+      toast.warning(validationError);
+      return;
+    }
+
+    setIsUploadingBanner(true);
+    const loadingId = toast.loading("Đang tải banner thương hiệu...");
+    try {
+      const updatedBrand = await uploadBackofficeBrandBanner(selectedBrand.id, bannerFile);
+      setBrands((current) => sortBrands(current.map((item) => (item.id === updatedBrand.id ? updatedBrand : item))));
+      setSelectedBannerFiles([]);
+      toast.success("Đã cập nhật banner thương hiệu.", { id: loadingId });
+    } catch (error) {
+      toast.error(getBrandApiErrorMessage(error, "Không thể tải banner thương hiệu."), { id: loadingId });
+    } finally {
+      setIsUploadingBanner(false);
+    }
+  };
+
+  const handleSelectBannerFiles = (files: File[]) => {
+    if (files.length === 0) {
+      setSelectedBannerFiles([]);
+      return;
+    }
+
+    if (files.length > 1) {
+      toast.warning("Banner thương hiệu chỉ nhận 1 ảnh, hệ thống sẽ lấy ảnh đầu tiên.");
+    }
+
+    const validationError = validateBrandImageFile(files[0], "banner thương hiệu");
+    if (validationError) {
+      toast.warning(validationError);
+      return;
+    }
+
+    setSelectedBannerFiles([files[0]!]);
   };
 
   const existingBrandLogo = useMemo(() => {
@@ -229,6 +358,13 @@ export default function StaffBrandManager() {
       return [];
     }
     return [{ publicId: selectedBrand.logoPublicId, url: selectedBrand.logoUrl ?? null }];
+  }, [selectedBrand]);
+
+  const existingBrandBanner = useMemo(() => {
+    if (!selectedBrand?.bannerUrl && !selectedBrand?.bannerPublicId) {
+      return [];
+    }
+    return [{ publicId: selectedBrand.bannerPublicId ?? "banner-url", url: selectedBrand.bannerUrl ?? null }];
   }, [selectedBrand]);
 
   return (
@@ -248,33 +384,63 @@ export default function StaffBrandManager() {
                 key={selectedBrand?.id ?? "create-brand-form"}
                 defaultValue={brandFormDefaultValue}
                 extraContentBeforeActions={
-                  <ImageUploadFieldset
-                    description={
-                      isEditMode
-                        ? "Tải logo thương hiệu bằng API upload ảnh, không dùng URL thủ công."
-                        : "Có thể chọn logo ngay lúc tạo. Hệ thống sẽ tự tải logo sau khi tạo thương hiệu thành công."
-                    }
-                    emptyExistingText={
-                      isEditMode
-                        ? "Thương hiệu chưa có logo."
-                        : "Thương hiệu chưa được tạo, logo sẽ được tải tự động sau khi tạo thành công."
-                    }
-                    existingImages={existingBrandLogo}
-                    isUploading={isUploadingLogo || isSubmitting}
-                    onClearSelected={() => setSelectedLogoFiles([])}
-                    onSelectFiles={handleSelectLogoFiles}
-                    onUploadSelected={() => {
-                      if (!isEditMode) {
-                        toast.warning("Logo sẽ được tải tự động sau khi tạo thương hiệu.");
-                        return;
+                  <div className="space-y-4">
+                    <ImageUploadFieldset
+                      description={
+                        isEditMode
+                          ? "Tải logo thương hiệu bằng API upload ảnh, không dùng URL thủ công."
+                          : "Có thể chọn logo ngay lúc tạo. Hệ thống sẽ tự tải logo sau khi tạo thương hiệu thành công."
                       }
-                      void handleUploadBrandLogo();
-                    }}
-                    selectedFiles={selectedLogoFiles}
-                    selectedPreviewUrls={selectedLogoPreviewUrls}
-                    title="Logo thương hiệu"
-                    uploadButtonText={isEditMode ? "Tải logo lên" : "Sẽ tải sau khi tạo"}
-                  />
+                      emptyExistingText={
+                        isEditMode
+                          ? "Thương hiệu chưa có logo."
+                          : "Thương hiệu chưa được tạo, logo sẽ được tải tự động sau khi tạo thành công."
+                      }
+                      existingImages={existingBrandLogo}
+                      isUploading={isUploadingLogo || isSubmitting}
+                      onClearSelected={() => setSelectedLogoFiles([])}
+                      onSelectFiles={handleSelectLogoFiles}
+                      onUploadSelected={() => {
+                        if (!isEditMode) {
+                          toast.warning("Logo sẽ được tải tự động sau khi tạo thương hiệu.");
+                          return;
+                        }
+                        void handleUploadBrandLogo();
+                      }}
+                      selectedFiles={selectedLogoFiles}
+                      selectedPreviewUrls={selectedLogoPreviewUrls}
+                      title="Logo thương hiệu"
+                      uploadButtonText={isEditMode ? "Tải logo lên" : "Sẽ tải sau khi tạo"}
+                    />
+
+                    <ImageUploadFieldset
+                      description={
+                        isEditMode
+                          ? "Tải banner thương hiệu lên Cloudinary, tối đa 5MB và chỉ nhận file ảnh."
+                          : "Có thể chọn banner ngay lúc tạo. Hệ thống sẽ tự tải banner sau khi tạo thương hiệu thành công."
+                      }
+                      emptyExistingText={
+                        isEditMode
+                          ? "Thương hiệu chưa có banner."
+                          : "Thương hiệu chưa được tạo, banner sẽ được tải tự động sau khi tạo thành công."
+                      }
+                      existingImages={existingBrandBanner}
+                      isUploading={isUploadingBanner || isSubmitting}
+                      onClearSelected={() => setSelectedBannerFiles([])}
+                      onSelectFiles={handleSelectBannerFiles}
+                      onUploadSelected={() => {
+                        if (!isEditMode) {
+                          toast.warning("Banner sẽ được tải tự động sau khi tạo thương hiệu.");
+                          return;
+                        }
+                        void handleUploadBrandBanner();
+                      }}
+                      selectedFiles={selectedBannerFiles}
+                      selectedPreviewUrls={selectedBannerPreviewUrls}
+                      title="Banner thương hiệu"
+                      uploadButtonText={isEditMode ? "Tải banner lên" : "Sẽ tải sau khi tạo"}
+                    />
+                  </div>
                 }
                 isDeleting={isDeleting}
                 isEditMode={isEditMode}
@@ -282,6 +448,7 @@ export default function StaffBrandManager() {
                 onCancelEdit={() => {
                   setEditingBrandId("");
                   setSelectedLogoFiles([]);
+                  setSelectedBannerFiles([]);
                 }}
                 onDelete={() => {
                   if (selectedBrand) {
@@ -341,6 +508,7 @@ export default function StaffBrandManager() {
                             <p className="truncate font-semibold">{brand.name}</p>
                             <p className="truncate text-xs text-muted-foreground">Slug: {brand.slug}</p>
                             <p className="truncate text-xs text-muted-foreground">Logo: {brand.logoUrl || "Chưa có logo"}</p>
+                            <p className="truncate text-xs text-muted-foreground">Banner: {brand.bannerUrl || "Chưa có banner"}</p>
                           </div>
                           <div className="text-center">
                             <span
@@ -358,6 +526,7 @@ export default function StaffBrandManager() {
                               onClick={() => {
                                 setEditingBrandId(brand.id);
                                 setSelectedLogoFiles([]);
+                                setSelectedBannerFiles([]);
                               }}
                               type="button"
                               variant={isEditing ? "default" : "outline"}
