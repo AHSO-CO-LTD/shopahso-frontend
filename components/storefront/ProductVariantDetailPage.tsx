@@ -4,12 +4,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { FileText } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import ProductDescriptionRenderer from "@/components/storefront/ProductDescriptionRenderer";
 import RelatedVariantCarousel from "@/components/storefront/RelatedVariantCarousel";
+import VariantEngagementMetrics from "@/components/storefront/VariantEngagementMetrics";
 import { getCatalogProductBySlug, getCatalogVariantBySlug } from "@/lib/api/services/catalog-variants.service";
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
 import QuoteRequestModal from "@/components/quote-requests/QuoteRequestModal";
-import { getCatalogPricingDisplay } from "@/lib/catalog/pricing";
+import { getCatalogVariantPricingDisplay } from "@/lib/catalog/pricing";
 import type { CatalogVariant, CatalogVariantAttributeValue } from "@/lib/catalog/types";
 import { FALLBACK_LOGO_IMAGE } from "@/lib/image-fallbacks";
 import { getPricingStatusBadgeClass, getPricingStatusLabel, isContactForPrice } from "@/lib/pricing-status";
@@ -140,9 +142,11 @@ export default function ProductVariantDetailPage({ slug }: { slug: string }) {
       return null;
     }
 
-    return getCatalogPricingDisplay({
-      fallbackPrice: variant.salePrice ?? variant.price,
+    return getCatalogVariantPricingDisplay({
+      discountPercent: variant.discountPercent,
+      price: variant.price,
       pricing: variant.pricing,
+      salePrice: variant.salePrice,
       tax: variant.tax,
     });
   }, [variant]);
@@ -169,17 +173,20 @@ export default function ProductVariantDetailPage({ slug }: { slug: string }) {
             const productDetail = await getCatalogProductBySlug(response.product.slug);
             setRelatedVariants(productDetail.variants ?? []);
           } catch (productError) {
-            setRelatedErrorMessage(
+            const message =
               productError instanceof Error
                 ? productError.message
-                : "Không thể tải danh sách sản phẩm cùng dòng.",
-            );
+                : "Không thể tải danh sách sản phẩm cùng dòng.";
+            setRelatedErrorMessage(message);
+            toast.error(message);
           } finally {
             setIsRelatedLoading(false);
           }
         }
       } catch (error) {
-        setErrorMessage(error instanceof Error ? error.message : "Không thể tải chi tiết sản phẩm.");
+        const message = error instanceof Error ? error.message : "Không thể tải chi tiết sản phẩm.";
+        setErrorMessage(message);
+        toast.error(message);
       } finally {
         setIsLoading(false);
       }
@@ -228,6 +235,7 @@ export default function ProductVariantDetailPage({ slug }: { slug: string }) {
               <p className="mt-2 text-sm text-muted-foreground">
                 Dòng sản phẩm: <span className="font-semibold text-foreground">{variant.product.name}</span>
               </p>
+              <VariantEngagementMetrics className="mt-4" variant={variant} />
               {requiresQuote ? (
                 <span className={`mt-4 inline-flex border px-2 py-1 text-[11px] font-semibold ${getPricingStatusBadgeClass(variant.pricingStatus)}`}>
                   {getPricingStatusLabel(variant.pricingStatus)}
@@ -272,9 +280,29 @@ export default function ProductVariantDetailPage({ slug }: { slug: string }) {
                 ) : (
                   <>
                     <p className="mt-2 text-3xl font-black text-primary">
-                      {formatMoney(taxPreview?.totalWithTax ?? variant.price)}
+                      {formatMoney(taxPreview?.effectivePrice ?? variant.price)}
                     </p>
                     <div className="mt-4 grid gap-2 border border-border bg-background p-3 text-sm">
+                      {taxPreview?.isDiscounted ? (
+                        <>
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-muted-foreground">Giá gốc</span>
+                            <span className="font-semibold line-through">{formatMoney(taxPreview.originalPrice)}</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-muted-foreground">Ưu đãi</span>
+                            <span className="font-black text-red-700">
+                              {taxPreview.discountBadge || "Đang áp dụng"}
+                            </span>
+                          </div>
+                          {taxPreview.discountSourceLabel ? (
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-muted-foreground">Nguồn giảm</span>
+                              <span className="font-semibold">{taxPreview.discountSourceLabel}</span>
+                            </div>
+                          ) : null}
+                        </>
+                      ) : null}
                       <div className="flex items-center justify-between gap-3">
                         <span className="text-muted-foreground">Giá trước thuế</span>
                         <span className="font-semibold">{formatMoney(taxPreview?.effectivePrice ?? variant.price)}</span>

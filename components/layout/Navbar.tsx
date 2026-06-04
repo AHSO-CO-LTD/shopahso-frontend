@@ -163,7 +163,7 @@ const Navbar = () => {
       className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
     >
       <div className="container mx-auto flex h-16 items-center justify-between gap-3 px-4 lg:h-20 lg:gap-8">
-        <Link href="/san-pham" className="flex shrink-0 items-center gap-3">
+        <Link href="/" className="flex shrink-0 items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center bg-white p-1 lg:h-12 lg:w-12">
             <Image
               src="/logo.png"
@@ -171,6 +171,7 @@ const Navbar = () => {
               width={40}
               height={40}
               className="object-contain"
+              priority
             />
           </div>
           <span className="hidden text-2xl font-black tracking-tight sm:block">
@@ -179,7 +180,7 @@ const Navbar = () => {
         </Link>
 
         <nav className="hidden items-center gap-8 text-sm font-semibold lg:flex">
-          <Link href="https://ahso.vn" className="transition-colors hover:text-primary">
+          <Link href="/" className="transition-colors hover:text-primary">
             Trang chủ
           </Link>
           <Link href="/san-pham" className="transition-colors hover:text-primary">
@@ -188,8 +189,8 @@ const Navbar = () => {
           <Link href="/thuong-hieu" className="transition-colors hover:text-primary">
             Thương hiệu
           </Link>
-          <Link href="/datasheet" className="transition-colors hover:text-primary">
-            Datasheet
+          <Link href="https://ahso.vn" className="transition-colors hover:text-primary">
+            Về AHSO
           </Link>
         </nav>
 
@@ -421,10 +422,10 @@ const Navbar = () => {
             </div>
 
             <nav className="grid border border-border text-sm font-semibold">
-              <MobileNavLink href="https://ahso.vn" label="Trang chủ" onSelect={closeMobileMenu} />
+              <MobileNavLink href="/" label="Trang chủ" onSelect={closeMobileMenu} />
               <MobileNavLink href="/san-pham" label="Sản phẩm" onSelect={closeMobileMenu} />
               <MobileNavLink href="/thuong-hieu" label="Thương hiệu" onSelect={closeMobileMenu} />
-              <MobileNavLink href="/datasheet" label="Datasheet" onSelect={closeMobileMenu} />
+              <MobileNavLink href="https://ahso.vn" label="Về AHSO" onSelect={closeMobileMenu} />
             </nav>
 
             <div className="border border-border bg-muted/10 p-3">

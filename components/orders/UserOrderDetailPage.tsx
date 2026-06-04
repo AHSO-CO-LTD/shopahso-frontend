@@ -85,7 +85,7 @@ export default function UserOrderDetailPage({ orderId }: { orderId: string }) {
     try {
       const response = await confirmMyOrderPayment(order.id);
       setOrder(response);
-      toast.success("Đã gửi xác nhận thanh toán.", { id: loadingToastId });
+      toast.success("Đã gửi xác nhận thanh toán. Shop sẽ kiểm tra và phản hồi sớm.", { id: loadingToastId });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Không thể xác nhận thanh toán.", { id: loadingToastId });
     } finally {
@@ -191,15 +191,18 @@ function OrderDetail({
   onOpenOrderItem: (item: CheckoutOrderItem) => Promise<void>;
   order: CheckoutOrder;
 }) {
-  const shippingAddress = order.shippingAddress;
-  const shippingName = shippingAddress?.name || order.customerName || "Chưa có dữ liệu";
-  const shippingPhone = shippingAddress?.phoneNumber || order.customerPhone || "Chưa có dữ liệu";
-  const shippingLine = shippingAddress
-    ? `${shippingAddress.streetAddress}, ${shippingAddress.wardName}, ${shippingAddress.provinceName}`
-    : "Chưa có dữ liệu";
+  const shippingName = order.shippingName || order.customerName || "Chưa có dữ liệu";
+  const shippingPhone = order.shippingPhone || order.customerPhone || "Chưa có dữ liệu";
+  const shippingLineParts = [
+    order.shippingStreetAddress,
+    order.shippingWardName,
+    order.shippingProvinceName,
+  ].filter(Boolean);
+  const shippingLine = shippingLineParts.length > 0 ? shippingLineParts.join(", ") : "Chưa có dữ liệu";
+  const showPaymentInstructions = order.paymentStatus !== "PAID";
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px] xl:gap-6">
+    <div className={`grid gap-4 xl:gap-6 ${showPaymentInstructions ? "xl:grid-cols-[minmax(0,1fr)_360px]" : ""}`}>
       <div className="grid gap-4">
         <section className="border border-border bg-background">
           <header className="border-b border-border px-4 py-4 md:px-5">
@@ -271,38 +274,40 @@ function OrderDetail({
         </section>
       </div>
 
-      <aside className="h-fit border border-border bg-muted/10 p-4 md:p-5 xl:sticky xl:top-24">
-        <h2 className="text-base font-black tracking-tight">Thanh toán</h2>
-        <dl className="mt-4 grid gap-3 border-b border-border pb-4 text-sm">
-          <Info label="Tổng tiền" value={formatCartMoney(order.grandTotalAmount)} strong />
-          <Info label="Ngân hàng" value={order.paymentBankName || order.paymentBankCode || "Chưa có dữ liệu"} />
-          <Info label="Số tài khoản" value={order.paymentBankAccountNumber || "Chưa có dữ liệu"} mono />
-          <Info label="Chủ tài khoản" value={order.paymentBankAccountName || "Chưa có dữ liệu"} />
-          <Info label="Nội dung chuyển khoản" value={order.paymentTransferContent || "Chưa có dữ liệu"} mono />
-        </dl>
+      {showPaymentInstructions ? (
+        <aside className="h-fit border border-border bg-muted/10 p-4 md:p-5 xl:sticky xl:top-24">
+          <h2 className="text-base font-black tracking-tight">Thanh toán</h2>
+          <dl className="mt-4 grid gap-3 border-b border-border pb-4 text-sm">
+            <Info label="Tổng tiền" value={formatCartMoney(order.grandTotalAmount)} strong />
+            <Info label="Ngân hàng" value={order.paymentBankName || order.paymentBankCode || "Chưa có dữ liệu"} />
+            <Info label="Số tài khoản" value={order.paymentBankAccountNumber || "Chưa có dữ liệu"} mono />
+            <Info label="Chủ tài khoản" value={order.paymentBankAccountName || "Chưa có dữ liệu"} />
+            <Info label="Nội dung chuyển khoản" value={order.paymentTransferContent || "Chưa có dữ liệu"} mono />
+          </dl>
 
-        {order.paymentQrUrl ? (
-          <Image
-            alt={`QR thanh toán đơn ${order.orderCode}`}
-            className="mt-4 h-auto w-full border border-border bg-background"
-            height={320}
-            src={order.paymentQrUrl}
-            width={320}
-          />
-        ) : null}
+          {order.paymentQrUrl ? (
+            <Image
+              alt={`QR thanh toán đơn ${order.orderCode}`}
+              className="mt-4 h-auto w-full border border-border bg-background"
+              height={320}
+              src={order.paymentQrUrl}
+              width={320}
+            />
+          ) : null}
 
-        {canConfirmOrderPayment(order) ? (
-          <Button
-            className="mt-4 h-11 w-full cursor-pointer text-sm font-semibold"
-            disabled={isConfirming}
-            onClick={() => void onConfirmPayment()}
-            type="button"
-          >
-            <CheckCircle2 className="size-4" />
-            Tôi đã chuyển khoản
-          </Button>
-        ) : null}
-      </aside>
+          {canConfirmOrderPayment(order) ? (
+            <Button
+              className="mt-4 h-11 w-full cursor-pointer text-sm font-semibold"
+              disabled={isConfirming}
+              onClick={() => void onConfirmPayment()}
+              type="button"
+            >
+              <CheckCircle2 className="size-4" />
+              Tôi đã chuyển khoản
+            </Button>
+          ) : null}
+        </aside>
+      ) : null}
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { CartProvider } from "@/components/cart/CartProvider";
+import FloatingBannerModal from "@/components/layout/FloatingBannerModal";
 import Footer from "@/components/layout/Footer";
 import Navbar from "@/components/layout/Navbar";
 
@@ -21,6 +22,7 @@ export default function AppChrome({ children }: { children: React.ReactNode }) {
         <main className="flex min-h-[100dvh] flex-1 flex-col">{children}</main>
         <Footer />
         <CartDrawer />
+        <FloatingBannerModal />
       </div>
     </CartProvider>
   );

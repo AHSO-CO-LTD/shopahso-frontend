@@ -144,11 +144,14 @@ export function CheckoutShippingPage() {
     if (!isAuthenticated && !form.customerPhone.trim()) {
       return "Vui lòng nhập số điện thoại.";
     }
-    if (isAuthenticated && form.addressId) {
+    if (isAuthenticated && form.addressId && selectedAddress) {
       return null;
     }
+    if (isAuthenticated && form.addressId && !selectedAddress) {
+      return "Địa chỉ đã chọn không còn trong danh sách. Vui lòng tải lại hoặc chọn địa chỉ khác.";
+    }
     if (!selectedProvince || !selectedWard || !form.streetAddress.trim()) {
-      return "Vui lòng nhập đầy đủ địa chỉ giao hàng.";
+      return "Vui lòng nhập địa chỉ nhận hàng";
     }
     return null;
   }
@@ -163,7 +166,7 @@ export function CheckoutShippingPage() {
     }
 
     const manualAddress: CheckoutShippingAddress | undefined =
-      !isAuthenticated || !form.addressId
+      !isAuthenticated || !selectedAddress
         ? {
             name: form.customerName.trim(),
             phoneNumber: form.customerPhone.trim(),
@@ -187,16 +190,16 @@ export function CheckoutShippingPage() {
         customerPhone: form.customerPhone.trim() || undefined,
         customerNote: form.customerNote.trim() || undefined,
         invoiceRequested: false,
-        shippingAddressId: isAuthenticated && form.addressId ? form.addressId : undefined,
+        shippingAddressId: isAuthenticated && selectedAddress ? selectedAddress.id : undefined,
         shippingAddress: manualAddress,
       });
 
       setStoredCheckoutOrder(order);
-      toast.success("Đã tạo đơn hàng.", { id: loadingToastId });
+      toast.success("Đặt hàng thành công. Vui lòng chuyển khoản để xác nhận đơn.", { id: loadingToastId });
       await refreshCart();
       router.push("/checkout/payment");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Không thể tạo đơn hàng.", { id: loadingToastId });
+    } catch {
+      toast.error("Không thể tạo đơn hàng. Vui lòng kiểm tra địa chỉ nhận hàng.", { id: loadingToastId });
     } finally {
       setIsSubmitting(false);
     }

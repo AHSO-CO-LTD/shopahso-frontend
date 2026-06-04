@@ -130,6 +130,12 @@ export type CheckoutOrder = {
   cancelledAt?: string | null;
   completedAt?: string | null;
   items: CheckoutOrderItem[];
+  shippingName?: string | null;
+  shippingPhone?: string | null;
+  shippingProvinceName?: string | null;
+  shippingWardName?: string | null;
+  shippingStreetAddress?: string | null;
+  shippingNote?: string | null;
   shippingAddress?: UserAddress | CheckoutShippingAddress | null;
   createdAt?: string;
   updatedAt?: string;

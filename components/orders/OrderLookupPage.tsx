@@ -7,6 +7,7 @@ import { CheckCircle2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { formatCartMoney } from "@/components/cart/cart-format";
 import {
+  canConfirmOrderPayment,
   getFulfillmentStatusLabel,
   getOrderStatusLabel,
   getPaymentStatusLabel,
@@ -68,7 +69,7 @@ export function OrderLookupPage() {
     try {
       const response = await confirmPublicOrderPayment({ orderCode: order.orderCode, email: order.customerEmail });
       setOrder(response);
-      toast.success("Đã gửi xác nhận thanh toán.", { id: loadingToastId });
+      toast.success("Đã gửi xác nhận thanh toán. Shop sẽ kiểm tra và phản hồi sớm.", { id: loadingToastId });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Không thể xác nhận thanh toán.", { id: loadingToastId });
     } finally {
@@ -109,7 +110,7 @@ export function OrderLookupPage() {
 
       <section className="border border-border bg-background p-4">
         {order ? (
-          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_280px]">
+          <div className={`grid gap-5 ${order.paymentStatus !== "PAID" ? "xl:grid-cols-[minmax(0,1fr)_280px]" : ""}`}>
             <div>
               <h2 className="text-xl font-black tracking-tight">Đơn {order.orderCode}</h2>
               <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
@@ -118,20 +119,24 @@ export function OrderLookupPage() {
                 <Info label="Trạng thái đơn" value={getOrderStatusLabel(order.status)} />
                 <Info label="Thanh toán" value={getPaymentStatusLabel(order.paymentStatus)} />
                 <Info label="Giao hàng" value={getFulfillmentStatusLabel(order.fulfillmentStatus)} />
-                <Info label="Nội dung CK" value={order.paymentTransferContent ?? ""} mono />
+                {order.paymentStatus !== "PAID" ? (
+                  <Info label="Nội dung CK" value={order.paymentTransferContent ?? ""} mono />
+                ) : null}
               </dl>
-              <Button
-                className="mt-5 h-10 px-4 text-sm font-semibold"
-                disabled={isConfirming}
-                onClick={() => void confirmPayment()}
-                type="button"
-                variant="outline"
-              >
-                <CheckCircle2 className="size-4" />
-                Tôi đã chuyển khoản
-              </Button>
+              {canConfirmOrderPayment(order) ? (
+                <Button
+                  className="mt-5 h-10 px-4 text-sm font-semibold"
+                  disabled={isConfirming}
+                  onClick={() => void confirmPayment()}
+                  type="button"
+                  variant="outline"
+                >
+                  <CheckCircle2 className="size-4" />
+                  Tôi đã chuyển khoản
+                </Button>
+              ) : null}
             </div>
-            {order.paymentQrUrl ? (
+            {order.paymentStatus !== "PAID" && order.paymentQrUrl ? (
               <Image
                 alt={`QR thanh toán đơn ${order.orderCode}`}
                 className="h-auto w-full border border-border"

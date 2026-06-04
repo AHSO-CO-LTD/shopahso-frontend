@@ -1,5 +1,6 @@
 import type { Brand } from "@/lib/brand/types";
 import type { BackofficeCategory } from "@/lib/category/types";
+import type { CatalogVariantRating } from "@/lib/catalog/types";
 import type { PricingStatus } from "@/lib/pricing-status";
 
 export type ProductStatus = "DRAFT" | "PUBLISHED";
@@ -51,6 +52,10 @@ export type VariantSummary = {
   score: number;
   viewCount: number;
   orderCount: number;
+  ratingAverage?: string | number;
+  ratingCount?: number;
+  ratingTotal?: string | number;
+  rating?: CatalogVariantRating | null;
   specSnapshot: Record<string, unknown> | null;
   imageUrls: string[];
   imagePublicIds: string[];

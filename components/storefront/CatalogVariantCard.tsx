@@ -2,9 +2,11 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { FileText } from "lucide-react";
+import { Eye, FileText, ShoppingCart, Star } from "lucide-react";
+import type { ReactNode } from "react";
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
-import { formatCatalogMoney } from "@/lib/catalog/pricing";
+import { formatCatalogMoney, getCatalogVariantPricingDisplay } from "@/lib/catalog/pricing";
+import { getVariantEngagementMetrics } from "@/lib/catalog/variant-metrics";
 import type { CatalogVariant } from "@/lib/catalog/types";
 import { FALLBACK_LOGO_IMAGE } from "@/lib/image-fallbacks";
 import { isContactForPrice } from "@/lib/pricing-status";
@@ -21,19 +23,13 @@ export default function CatalogVariantCard({
   const isOutOfStock = !requiresQuote && variant.stockQuantity <= 0;
   const imageUrl = variant.effectiveImageUrls?.[0] ?? FALLBACK_LOGO_IMAGE;
   const isFallbackImage = imageUrl === FALLBACK_LOGO_IMAGE;
-  const regularPrice = toCatalogNumber(variant.price);
-  const salePrice = toCatalogNumber(variant.salePrice);
-  const discountPercent = getDiscountPercent({
-    discountPercent: variant.discountPercent,
-    price: regularPrice,
-    salePrice,
-  });
-  const discountedPrice = getDiscountedPrice({
-    discountPercent,
-    price: regularPrice,
-    salePrice,
-  });
-  const isDiscounted = !requiresQuote && discountedPrice !== null && regularPrice !== null && discountedPrice > 0 && discountedPrice < regularPrice;
+  const engagement = getVariantEngagementMetrics(variant);
+  const pricing = getCatalogVariantPricingDisplay(variant);
+  const isDiscounted = !requiresQuote && pricing.isDiscounted;
+  const promotionName =
+    pricing.discount?.source === "PROMOTION" && pricing.discount.promotion?.name
+      ? pricing.discount.promotion.name
+      : "";
 
   function handleNavigate(eventTarget: EventTarget | null) {
     if (eventTarget instanceof HTMLElement && eventTarget.closest("a, button")) {
@@ -95,17 +91,38 @@ export default function CatalogVariantCard({
           />
         </div>
 
-        <div className="absolute left-2 top-2 flex flex-wrap gap-1.5 sm:left-3 sm:top-3 sm:gap-2">
-          {!isOutOfStock && isDiscounted && discountPercent !== null ? (
+        <div className="absolute left-2 top-2 flex max-w-[calc(100%-5rem)] flex-col items-start gap-1.5 sm:left-3 sm:top-3 sm:max-w-[calc(100%-6rem)] sm:gap-2">
+          {!isOutOfStock && isDiscounted && pricing.discountBadge ? (
             <span className="relative z-30 border border-red-700 bg-red-600 px-1.5 py-1 text-[9px] font-black uppercase tracking-[0.1em] text-white sm:px-2 sm:text-[10px] sm:tracking-[0.14em]">
-              -{discountPercent}%
+              {pricing.discountBadge}
             </span>
           ) : null}
-          {!isOutOfStock && requiresQuote ? (
-            <span className="border border-yellow-500 bg-yellow-400 px-1.5 py-1 text-[9px] font-black uppercase tracking-[0.1em] text-foreground sm:px-2 sm:text-[10px] sm:tracking-[0.14em]">
-              Báo giá
+          {!isOutOfStock && isDiscounted && promotionName ? (
+            <span className="relative z-30 line-clamp-2 border border-red-700 bg-background px-1.5 py-1 text-[9px] font-black leading-tight text-red-700 sm:px-2 sm:text-[10px]">
+              {promotionName}
             </span>
           ) : null}
+        </div>
+        <div className="pointer-events-none absolute right-2 top-2 z-0 sm:right-3 sm:top-3">
+          <ImageMetric
+            icon={<Eye aria-hidden="true" className="size-3.5" />}
+            label={`${engagement.viewCount.toLocaleString("vi-VN")} lượt xem`}
+            value={engagement.viewCount.toLocaleString("vi-VN")}
+          />
+        </div>
+        <div className="pointer-events-none absolute bottom-2 left-2 z-0 sm:bottom-3 sm:left-3">
+          <ImageMetric
+            icon={<Star aria-hidden="true" className="size-3.5 fill-yellow-400 text-yellow-500" />}
+            label={`${engagement.ratingAverage.toFixed(1)} sao, ${engagement.ratingCount} đánh giá thật`}
+            value={engagement.ratingAverage.toFixed(1)}
+          />
+        </div>
+        <div className="pointer-events-none absolute bottom-2 right-2 z-0 sm:bottom-3 sm:right-3">
+          <ImageMetric
+            icon={<ShoppingCart aria-hidden="true" className="size-3.5" />}
+            label={`${engagement.orderCount.toLocaleString("vi-VN")} lượt mua`}
+            value={engagement.orderCount.toLocaleString("vi-VN")}
+          />
         </div>
       </div>
 
@@ -166,93 +183,54 @@ function ProductMetaItem({ label, value }: { label: string; value: string }) {
   );
 }
 
+function ImageMetric({
+  icon,
+  label,
+  value,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1 bg-background/90 px-1.5 py-1 text-[10px] font-black text-foreground shadow-[0_4px_12px_rgba(15,23,42,0.12)] sm:text-[11px]">
+      {icon}
+      <span className="tabular-nums">{value}</span>
+      <span className="sr-only">{label}</span>
+    </span>
+  );
+}
+
 function CatalogPrice({ variant }: { variant: CatalogVariant }) {
   if (isContactForPrice(variant.pricingStatus)) {
     return (
       <div className="min-w-0">
         <p className="text-sm font-black text-primary sm:text-lg xl:text-base">Liên hệ báo giá</p>
-        <p className="mt-1 hidden text-xs text-muted-foreground sm:block">Giá xác nhận theo số lượng và thời điểm đặt hàng.</p>
       </div>
     );
   }
 
-  const regularPrice = toCatalogNumber(variant.price);
-  const salePrice = toCatalogNumber(variant.salePrice);
-  const discountPercent = getDiscountPercent({
-    discountPercent: variant.discountPercent,
-    price: regularPrice,
-    salePrice,
-  });
-  const discountedPrice = getDiscountedPrice({
-    discountPercent,
-    price: regularPrice,
-    salePrice,
-  });
-  const isDiscounted = discountedPrice !== null && regularPrice !== null && discountedPrice > 0 && discountedPrice < regularPrice;
-  const displayPrice = isDiscounted ? discountedPrice : variant.salePrice ?? variant.price;
+  const pricing = getCatalogVariantPricingDisplay(variant);
 
   return (
     <div className="min-w-0">
-      <p className={["truncate text-sm font-black sm:text-lg xl:text-base", isDiscounted ? "text-red-700" : "text-primary"].join(" ")}>
-        {formatCatalogMoney(displayPrice)}
-      </p>
-      {isDiscounted ? (
-        <p className="mt-0.5 truncate text-[11px] font-semibold text-muted-foreground line-through">
-          {formatCatalogMoney(regularPrice)}
+      {pricing.isDiscounted ? (
+        <>
+          <p className="truncate text-[11px] font-semibold text-muted-foreground">
+            <span className="line-through">{formatCatalogMoney(pricing.originalPrice)}</span>
+            {pricing.discountPercent !== null ? (
+              <span className="ml-1 font-black text-red-700">-{pricing.discountPercent}%</span>
+            ) : null}
+          </p>
+          <p className="truncate text-sm font-black text-red-700 sm:text-lg xl:text-base">
+            {formatCatalogMoney(pricing.effectivePrice)}
+          </p>
+        </>
+      ) : (
+        <p className="truncate text-sm font-black text-primary sm:text-lg xl:text-base">
+          {formatCatalogMoney(pricing.effectivePrice)}
         </p>
-      ) : null}
+      )}
     </div>
   );
-}
-
-function toCatalogNumber(value: number | string | null | undefined) {
-  if (value === null || value === undefined || value === "") {
-    return null;
-  }
-
-  const parsedValue = typeof value === "number" ? value : Number(value);
-
-  return Number.isFinite(parsedValue) ? parsedValue : null;
-}
-
-function getDiscountPercent({
-  discountPercent,
-  price,
-  salePrice,
-}: {
-  discountPercent: number | string | null | undefined;
-  price: number | null;
-  salePrice: number | null;
-}) {
-  const explicitPercent = toCatalogNumber(discountPercent);
-
-  if (explicitPercent !== null && explicitPercent > 0) {
-    return Math.round(explicitPercent);
-  }
-
-  if (price === null || salePrice === null || price <= 0 || salePrice >= price) {
-    return null;
-  }
-
-  return Math.round(((price - salePrice) / price) * 100);
-}
-
-function getDiscountedPrice({
-  discountPercent,
-  price,
-  salePrice,
-}: {
-  discountPercent: number | null;
-  price: number | null;
-  salePrice: number | null;
-}) {
-  if (salePrice !== null && price !== null && salePrice > 0 && salePrice < price) {
-    return salePrice;
-  }
-
-  if (discountPercent === null || price === null || price <= 0) {
-    return null;
-  }
-
-  return Math.max(price * (1 - discountPercent / 100), 0);
 }

@@ -6,7 +6,8 @@ import { FileText } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
 import { gsap } from "gsap";
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
-import { formatCatalogMoney, getCatalogPricingDisplay } from "@/lib/catalog/pricing";
+import VariantEngagementMetrics from "@/components/storefront/VariantEngagementMetrics";
+import { formatCatalogMoney, getCatalogVariantPricingDisplay } from "@/lib/catalog/pricing";
 import type { CatalogVariant } from "@/lib/catalog/types";
 import { FALLBACK_LOGO_IMAGE } from "@/lib/image-fallbacks";
 import { isContactForPrice } from "@/lib/pricing-status";
@@ -129,11 +130,7 @@ function RelatedVariantCard({
   const requiresQuote = isContactForPrice(variant.pricingStatus);
   const imageUrl = variant.effectiveImageUrls?.[0] ?? FALLBACK_LOGO_IMAGE;
   const isFallbackImage = imageUrl === FALLBACK_LOGO_IMAGE;
-  const pricing = getCatalogPricingDisplay({
-    fallbackPrice: variant.salePrice ?? variant.price,
-    pricing: variant.pricing,
-    tax: variant.tax,
-  });
+  const pricing = getCatalogVariantPricingDisplay(variant);
 
   return (
     <article className="flex w-[280px] shrink-0 flex-col border border-border bg-background transition-colors hover:border-primary">
@@ -157,9 +154,28 @@ function RelatedVariantCard({
           {requiresQuote ? (
             <p className="text-sm font-black text-primary">Liên hệ báo giá</p>
           ) : (
-            <p className="text-sm font-black text-primary">{formatCatalogMoney(pricing.totalWithTax)}</p>
+            <div>
+              {pricing.isDiscounted ? (
+                <>
+                  <p className="text-[11px] font-semibold text-muted-foreground">
+                    <span className="line-through">{formatCatalogMoney(pricing.originalPrice)}</span>
+                    {pricing.discountPercent !== null ? (
+                      <span className="ml-1 font-black text-red-700">-{pricing.discountPercent}%</span>
+                    ) : null}
+                  </p>
+                  <p className="text-sm font-black text-red-700">
+                    {formatCatalogMoney(pricing.effectivePrice)}
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm font-black text-primary">
+                  {formatCatalogMoney(pricing.effectivePrice)}
+                </p>
+              )}
+            </div>
           )}
         </div>
+        <VariantEngagementMetrics className="mt-3" compact variant={variant} />
         <div className="mt-auto pt-3">
           {requiresQuote ? (
             <button

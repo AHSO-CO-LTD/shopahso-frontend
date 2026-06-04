@@ -11,6 +11,8 @@ const pageLabels: Record<string, string> = {
   "/nhan-vien/san-pham/tao": "Tạo sản phẩm",
   "/nhan-vien/nguoi-dung": "Quản lý người dùng",
   "/nhan-vien/don-hang": "Quản lý đơn hàng",
+  "/nhan-vien/khuyen-mai": "Quản lý khuyến mãi",
+  "/nhan-vien/banner": "Quản lý banner",
   "/nhan-vien/danh-muc": "Tạo danh mục",
   "/nhan-vien/thuong-hieu": "Quản lý thương hiệu",
 };

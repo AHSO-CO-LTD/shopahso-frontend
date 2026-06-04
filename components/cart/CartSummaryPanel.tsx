@@ -93,7 +93,7 @@ export function CartSummaryPanel({
 
       {summary.priceChanged ? (
         <p className="mt-2 border border-secondary bg-secondary/30 px-3 py-2 text-xs font-semibold">
-          Một số sản phẩm đã thay đổi giá. Giỏ hàng đang dùng giá hiện tại.
+          Giá sản phẩm đã thay đổi, vui lòng kiểm tra lại đơn hàng.
         </p>
       ) : null}
 

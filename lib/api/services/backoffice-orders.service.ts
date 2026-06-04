@@ -17,6 +17,17 @@ export type BackofficeOrderReasonPayload = {
   staffNote?: string;
 };
 
+export type BackofficePaymentReviewPayload =
+  | {
+      action: "APPROVE";
+      staffNote?: string;
+    }
+  | {
+      action: "REJECT";
+      rejectReason: string;
+      staffNote?: string;
+    };
+
 export type BackofficeFulfillmentPayload = {
   fulfillmentStatus: string;
   staffNote?: string;
@@ -110,6 +121,17 @@ export async function confirmBackofficeOrderPayment(orderId: string, payload: Ba
     });
   } catch (error) {
     throw new Error(parseBackofficeOrderError(error, "Không thể xác nhận thanh toán."));
+  }
+}
+
+export async function reviewBackofficeOrderPayment(orderId: string, payload: BackofficePaymentReviewPayload) {
+  try {
+    return await authenticatedApiRequest<CheckoutOrder>(`/backoffice/orders/${orderId}/payment-review`, {
+      body: payload,
+      method: "PATCH",
+    });
+  } catch (error) {
+    throw new Error(parseBackofficeOrderError(error, "KhÃ´ng thá»ƒ duyá»‡t thanh toÃ¡n."));
   }
 }
 

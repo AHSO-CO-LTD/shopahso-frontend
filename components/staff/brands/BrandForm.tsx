@@ -9,6 +9,7 @@ import type { CreateBrandPayload } from "@/lib/brand/types";
 export type BrandFormValue = {
   name: string;
   slug: string;
+  bannerUrl: string;
   active: boolean;
 };
 
@@ -26,6 +27,7 @@ type BrandFormProps = {
 export const DEFAULT_BRAND_FORM_VALUE: BrandFormValue = {
   name: "",
   slug: "",
+  bannerUrl: "",
   active: true,
 };
 
@@ -33,8 +35,22 @@ function normalizePayload(formValue: BrandFormValue): CreateBrandPayload {
   return {
     name: formValue.name.trim(),
     slug: formValue.slug.trim(),
+    ...(formValue.bannerUrl.trim() ? { bannerUrl: formValue.bannerUrl.trim() } : {}),
     active: formValue.active,
   };
+}
+
+function isValidHttpUrl(value: string) {
+  if (!value.trim()) {
+    return true;
+  }
+
+  try {
+    const url = new URL(value.trim());
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 export default function BrandForm({
@@ -73,6 +89,12 @@ export default function BrandForm({
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (!isValidHttpUrl(formValue.bannerUrl)) {
+      toast.warning("Banner URL phải là đường dẫn hợp lệ bắt đầu bằng http:// hoặc https://.");
+      return;
+    }
+
     await onSubmit(normalizePayload(formValue));
 
     if (!isEditMode) {
@@ -124,6 +146,19 @@ export default function BrandForm({
           value={formValue.slug}
         />
       </div>
+
+      <label className="grid gap-2 text-sm">
+        <span className="font-semibold">Banner URL</span>
+        <input
+          className="h-11 border border-border bg-background px-3 outline-none focus:border-primary disabled:opacity-60"
+          disabled={isSubmitting}
+          onChange={(event) => setFormValue((current) => ({ ...current, bannerUrl: event.target.value }))}
+          placeholder="https://..."
+          type="url"
+          value={formValue.bannerUrl}
+        />
+        <span className="text-xs text-muted-foreground">Có thể để trống nếu dùng upload banner bên dưới.</span>
+      </label>
 
       <label className="grid gap-2 text-sm">
         <span className="font-semibold">Trạng thái</span>
