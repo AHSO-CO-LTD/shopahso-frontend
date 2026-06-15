@@ -221,7 +221,7 @@ export default function ProductVariantDetailPage({ slug }: { slug: string }) {
                 <div className="relative aspect-[16/9] w-full">
                   <Image
                     alt={variant.name}
-                    className={isDetailFallbackImage ? "object-contain p-12" : "object-cover"}
+                    className={isDetailFallbackImage ? "object-contain p-12" : "object-contain"}
                     fill
                     sizes="(max-width: 1024px) 100vw, 60vw"
                     src={detailImageUrl}
