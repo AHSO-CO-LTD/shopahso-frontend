@@ -18,6 +18,8 @@ export type CatalogVariantProduct = {
   id: string;
   name: string;
   slug: string;
+  categoryId?: string;
+  brandId?: string | null;
   description?: string | null;
 };
 
@@ -158,6 +160,8 @@ export type CatalogProductFilterOption = {
   id: string;
   name: string;
   slug: string;
+  categoryId?: string;
+  brandId?: string | null;
 };
 
 export type CatalogProductDetail = CatalogVariantProduct & {

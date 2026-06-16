@@ -39,9 +39,21 @@ function flattenCategories(tree: CategoryTreeNode[]) {
 type SortOption = "relevance" | "score" | "newest" | "price_asc" | "price_desc";
 
 function extractProductsFromVariants(items: CatalogVariant[]): CatalogProductFilterOption[] {
-  return items
-    .map((variant) => variant.product)
-    .filter((product): product is CatalogProductFilterOption => Boolean(product?.id && product?.name));
+  return items.flatMap((variant) => {
+    if (!variant.product?.id || !variant.product.name || !variant.product.slug) {
+      return [];
+    }
+
+    return [
+      {
+        id: variant.product.id,
+        name: variant.product.name,
+        slug: variant.product.slug,
+        brandId: variant.product.brandId ?? variant.brand?.id ?? null,
+        categoryId: variant.product.categoryId ?? variant.category.id,
+      },
+    ];
+  });
 }
 
 function mergeProductOptions(current: CatalogProductFilterOption[], incoming: CatalogProductFilterOption[]) {
@@ -49,11 +61,57 @@ function mergeProductOptions(current: CatalogProductFilterOption[], incoming: Ca
 
   incoming.forEach((item) => {
     if (item?.id && item?.name) {
-      map.set(item.id, item);
+      const existing = map.get(item.id);
+      map.set(item.id, {
+        ...existing,
+        ...item,
+        brandId: existing?.brandId ?? item.brandId ?? null,
+        categoryId: existing?.categoryId ?? item.categoryId,
+      });
     }
   });
 
   return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, "vi"));
+}
+
+function collectCategoryScopeIds(tree: CategoryTreeNode[], categoryId: string) {
+  const ids = new Set<string>();
+
+  function walk(nodes: CategoryTreeNode[], parentInScope: boolean) {
+    nodes.forEach((node) => {
+      const inScope = parentInScope || node.id === categoryId;
+
+      if (inScope) {
+        ids.add(node.id);
+      }
+
+      if (node.children.length > 0) {
+        walk(node.children, inScope);
+      }
+    });
+  }
+
+  walk(tree, false);
+  return ids;
+}
+
+function parsePositiveInteger(value: string | null, fallback: number, max?: number) {
+  const parsed = Number(value);
+
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    return fallback;
+  }
+
+  return max ? Math.min(parsed, max) : parsed;
+}
+
+function parsePriceParam(value: string) {
+  if (!value.trim()) {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
 }
 
 export default function ProductCatalogPage() {
@@ -64,6 +122,7 @@ export default function ProductCatalogPage() {
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const [isProductOptionsLoaded, setIsProductOptionsLoaded] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
   const [quoteVariant, setQuoteVariant] = useState<CatalogVariant | null>(null);
@@ -83,8 +142,8 @@ export default function ProductCatalogPage() {
   const priceMin = searchParams.get("priceMin") ?? "";
   const priceMax = searchParams.get("priceMax") ?? "";
   const sort = (searchParams.get("sort") as SortOption | null) ?? "relevance";
-  const page = Number(searchParams.get("page") ?? "1");
-  const limit = Number(searchParams.get("limit") ?? "24");
+  const page = parsePositiveInteger(searchParams.get("page"), 1);
+  const limit = parsePositiveInteger(searchParams.get("limit"), 24, 100);
 
   const selectedCategoryId = useMemo(
     () => categoryOptions.find((category) => category.slug === selectedCategorySlug)?.id ?? "",
@@ -112,6 +171,22 @@ export default function ProductCatalogPage() {
 
     return products.find((product) => product.id === legacyProductId)?.slug ?? "";
   }, [selectedProductSlug, legacyProductId, products]);
+  const selectedCategoryScopeIds = useMemo(
+    () => (selectedCategoryId ? collectCategoryScopeIds(categoryTree, selectedCategoryId) : null),
+    [categoryTree, selectedCategoryId],
+  );
+  const filteredProductOptions = useMemo(
+    () =>
+      products.filter((product) => {
+        const matchesCategory =
+          !selectedCategoryScopeIds
+          || (product.categoryId ? selectedCategoryScopeIds.has(product.categoryId) : false);
+        const matchesBrand = !selectedBrandId || product.brandId === selectedBrandId;
+
+        return matchesCategory && matchesBrand;
+      }),
+    [products, selectedBrandId, selectedCategoryScopeIds],
+  );
 
   const updateQuery = useCallback((
     updates: Record<string, string | null | undefined>,
@@ -251,6 +326,10 @@ export default function ProductCatalogPage() {
         if (!cancelled) {
           toast.error(error instanceof Error ? error.message : "Không thể tải danh sách sản phẩm.");
         }
+      } finally {
+        if (!cancelled) {
+          setIsProductOptionsLoaded(true);
+        }
       }
     }
 
@@ -275,6 +354,20 @@ export default function ProductCatalogPage() {
   }, [selectedProductSlug, legacyProductId, products, updateQuery]);
 
   useEffect(() => {
+    if (!selectedProductSlugValue || !isProductOptionsLoaded) {
+      return;
+    }
+
+    const selectedProductStillAvailable = filteredProductOptions.some(
+      (product) => product.slug === selectedProductSlugValue,
+    );
+
+    if (!selectedProductStillAvailable) {
+      updateQuery({ productId: null, productSlug: null }, { resetPage: true });
+    }
+  }, [filteredProductOptions, isProductOptionsLoaded, selectedProductSlugValue, updateQuery]);
+
+  useEffect(() => {
     async function loadVariants() {
       setIsLoading(true);
       setErrorMessage(null);
@@ -288,8 +381,8 @@ export default function ProductCatalogPage() {
           limit,
           brandId: selectedBrandId || undefined,
           categoryId: selectedCategoryId || undefined,
-          priceMax: priceMax.trim() ? Number(priceMax) : undefined,
-          priceMin: priceMin.trim() ? Number(priceMin) : undefined,
+          priceMax: parsePriceParam(priceMax),
+          priceMin: parsePriceParam(priceMin),
         });
 
         setVariants(response.items);
@@ -364,7 +457,7 @@ export default function ProductCatalogPage() {
         <section className={`${isFilterPanelOpen ? "grid" : "hidden"} mb-6 gap-4 lg:grid lg:grid-cols-3`}>
           <div className="border border-border bg-background p-4 lg:col-span-2">
             <p className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Bộ lọc</p>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(140px,0.75fr)_minmax(180px,0.95fr)_minmax(260px,1.3fr)_minmax(220px,1.1fr)_150px]">
               <label className="grid gap-2 text-sm sm:col-span-2 xl:col-span-5">
                 <span className="font-semibold">Từ khóa</span>
                 <input
@@ -396,7 +489,16 @@ export default function ProductCatalogPage() {
                 <span className="font-semibold">Danh mục</span>
                 <select
                   className="h-11 cursor-pointer border border-border bg-background px-3 outline-none focus:border-primary sm:h-10"
-                  onChange={(event) => updateQuery({ categorySlug: event.target.value }, { resetPage: true })}
+                  onChange={(event) =>
+                    updateQuery(
+                      {
+                        categorySlug: event.target.value,
+                        productId: null,
+                        productSlug: null,
+                      },
+                      { resetPage: true },
+                    )
+                  }
                   value={selectedCategorySlug}
                 >
                   <option value="">Tất cả danh mục</option>
@@ -412,6 +514,7 @@ export default function ProductCatalogPage() {
                 <span className="font-semibold">Sản phẩm</span>
                 <select
                   className="h-11 cursor-pointer border border-border bg-background px-3 outline-none focus:border-primary sm:h-10"
+                  disabled={!isProductOptionsLoaded && products.length === 0}
                   onChange={(event) =>
                     updateQuery(
                       {
@@ -423,8 +526,10 @@ export default function ProductCatalogPage() {
                   }
                   value={selectedProductSlugValue}
                 >
-                  <option value="">Tất cả sản phẩm</option>
-                  {products.map((product) => (
+                  <option value="">
+                    {isProductOptionsLoaded ? "Tất cả sản phẩm" : "Đang tải sản phẩm..."}
+                  </option>
+                  {filteredProductOptions.map((product) => (
                     <option key={product.id} value={product.slug}>
                       {product.name}
                     </option>
@@ -436,7 +541,16 @@ export default function ProductCatalogPage() {
                 <span className="font-semibold">Thương hiệu</span>
                 <select
                   className="h-11 cursor-pointer border border-border bg-background px-3 outline-none focus:border-primary sm:h-10"
-                  onChange={(event) => updateQuery({ brandSlug: event.target.value }, { resetPage: true })}
+                  onChange={(event) =>
+                    updateQuery(
+                      {
+                        brandSlug: event.target.value,
+                        productId: null,
+                        productSlug: null,
+                      },
+                      { resetPage: true },
+                    )
+                  }
                   value={selectedBrandSlug}
                 >
                   <option value="">Tất cả thương hiệu</option>
@@ -452,7 +566,7 @@ export default function ProductCatalogPage() {
                 <button
                   type="button"
                   onClick={resetAllFilters}
-                  className="inline-flex h-11 w-full cursor-pointer items-center justify-center border border-border px-3 text-sm font-semibold transition-colors hover:border-primary hover:text-primary sm:h-10"
+                  className="inline-flex h-11 w-full cursor-pointer items-center justify-center whitespace-nowrap border border-border px-3 text-sm font-semibold transition-colors hover:border-primary hover:text-primary sm:h-10"
                 >
                   Xóa bộ lọc
                 </button>
