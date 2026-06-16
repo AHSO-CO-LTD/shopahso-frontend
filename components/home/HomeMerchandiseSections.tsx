@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import HomeProductCluster from "@/components/home/HomeProductCluster";
-import { hasVariantDiscount } from "@/components/home/home-product-card";
 import { useHomeReveal } from "@/components/home/useHomeReveal";
 import {
   listCatalogFeaturedVariants,
@@ -11,211 +10,114 @@ import {
 } from "@/lib/api/services/catalog-variants.service";
 import type { CatalogVariant } from "@/lib/catalog/types";
 
-type ProductClusterState = {
+type ClusterState = {
   errorMessage: string | null;
   isLoading: boolean;
   products: CatalogVariant[];
 };
 
-type ProductClusterKey = "bestSellers" | "deals" | "featured" | "newArrivals";
+const INITIAL_STATE: ClusterState = { errorMessage: null, isLoading: true, products: [] };
 
-const INITIAL_CLUSTER_STATE: Record<ProductClusterKey, ProductClusterState> = {
-  bestSellers: { errorMessage: null, isLoading: true, products: [] },
-  deals: { errorMessage: null, isLoading: true, products: [] },
-  featured: { errorMessage: null, isLoading: true, products: [] },
-  newArrivals: { errorMessage: null, isLoading: true, products: [] },
-};
-
-async function fetchFeaturedVariants() {
-  const variants = await listCatalogFeaturedVariants({ limit: 10 });
-  return variants.slice(0, 10);
+async function fetchFeatured(): Promise<CatalogVariant[]> {
+  const variants = await listCatalogFeaturedVariants({ limit: 12 });
+  return variants.slice(0, 12);
 }
 
-async function fetchNewArrivals() {
-  const response = await searchCatalogVariants({
-    limit: 10,
-    page: 1,
-    sort: "newest",
-  });
-
-  return response.items.slice(0, 10);
+async function fetchNewArrivals(excludeIds: Set<string>): Promise<CatalogVariant[]> {
+  const response = await searchCatalogVariants({ limit: 20, page: 1, sort: "newest" });
+  return response.items.filter((v) => !excludeIds.has(v.id)).slice(0, 8);
 }
-
-async function fetchDealProducts() {
-  const response = await searchCatalogVariants({
-    limit: 80,
-    page: 1,
-    sort: "relevance",
-  });
-
-  return response.items.filter(hasVariantDiscount).slice(0, 10);
-}
-
-async function fetchBestSellers() {
-  const response = await searchCatalogVariants({
-    limit: 40,
-    page: 1,
-    sort: "score",
-  });
-
-  return response.items
-    .slice()
-    .sort((a, b) => (b.orderCount ?? 0) - (a.orderCount ?? 0) || b.score - a.score)
-    .slice(0, 10);
-}
-
-const FETCHERS: Record<ProductClusterKey, () => Promise<CatalogVariant[]>> = {
-  bestSellers: fetchBestSellers,
-  deals: fetchDealProducts,
-  featured: fetchFeaturedVariants,
-  newArrivals: fetchNewArrivals,
-};
-
-const ERROR_MESSAGES: Record<ProductClusterKey, string> = {
-  bestSellers: "Không thể tải sản phẩm bán chạy.",
-  deals: "Không thể tải sản phẩm đang giảm giá.",
-  featured: "Không thể tải sản phẩm nổi bật.",
-  newArrivals: "Không thể tải sản phẩm mới.",
-};
-
-const LOADING_MESSAGES: Record<ProductClusterKey, string> = {
-  bestSellers: "Đang tải sản phẩm bán chạy...",
-  deals: "Đang tải sản phẩm đang giảm giá...",
-  featured: "Đang tải sản phẩm nổi bật...",
-  newArrivals: "Đang tải sản phẩm mới...",
-};
-
-const SUCCESS_MESSAGES: Record<ProductClusterKey, string> = {
-  bestSellers: "Đã tải sản phẩm bán chạy.",
-  deals: "Đã tải sản phẩm đang giảm giá.",
-  featured: "Đã tải sản phẩm nổi bật.",
-  newArrivals: "Đã tải sản phẩm mới.",
-};
 
 export default function HomeMerchandiseSections() {
   const rootRef = useRef<HTMLDivElement>(null);
-  const [clusters, setClusters] = useState(INITIAL_CLUSTER_STATE);
+  const [featured, setFeatured] = useState<ClusterState>(INITIAL_STATE);
+  const [newArrivals, setNewArrivals] = useState<ClusterState>(INITIAL_STATE);
 
-  useHomeReveal(rootRef, Object.values(clusters).map((cluster) => cluster.products.length).join("-"));
-
-  const loadCluster = useCallback(async (key: ProductClusterKey, showFeedback = false) => {
-    const loadingToastId = showFeedback ? toast.loading(LOADING_MESSAGES[key]) : undefined;
-
-    setClusters((current) => ({
-      ...current,
-      [key]: { ...current[key], errorMessage: null, isLoading: true },
-    }));
-
-    try {
-      const products = await FETCHERS[key]();
-      setClusters((current) => ({
-        ...current,
-        [key]: { errorMessage: null, isLoading: false, products },
-      }));
-
-      if (showFeedback) {
-        toast.success(SUCCESS_MESSAGES[key], { id: loadingToastId });
-      }
-    } catch {
-      setClusters((current) => ({
-        ...current,
-        [key]: { errorMessage: ERROR_MESSAGES[key], isLoading: false, products: [] },
-      }));
-      toast.error(ERROR_MESSAGES[key], { id: loadingToastId });
-    }
-  }, []);
+  useHomeReveal(rootRef, `${featured.products.length}-${newArrivals.products.length}`);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function loadAllClusters() {
-      const entries = await Promise.all(
-        (Object.keys(FETCHERS) as ProductClusterKey[]).map(async (key) => {
-          try {
-            const products = await FETCHERS[key]();
-            return [key, { errorMessage: null, isLoading: false, products }] as const;
-          } catch {
-            return [key, { errorMessage: ERROR_MESSAGES[key], isLoading: false, products: [] }] as const;
-          }
-        }),
-      );
+    async function loadAll() {
+      try {
+        const featuredProducts = await fetchFeatured();
+        if (cancelled) return;
 
-      if (cancelled) {
-        return;
+        const excludeIds = new Set(featuredProducts.map((v) => v.id));
+        const newArrivalProducts = await fetchNewArrivals(excludeIds);
+        if (cancelled) return;
+
+        setFeatured({ errorMessage: null, isLoading: false, products: featuredProducts });
+        setNewArrivals({ errorMessage: null, isLoading: false, products: newArrivalProducts });
+      } catch {
+        if (cancelled) return;
+        const msg = "Không thể tải sản phẩm.";
+        setFeatured({ errorMessage: msg, isLoading: false, products: [] });
+        setNewArrivals({ errorMessage: msg, isLoading: false, products: [] });
+        toast.error(msg);
       }
-
-      const nextClusters = entries.reduce(
-        (accumulator, [key, value]) => ({
-          ...accumulator,
-          [key]: value,
-        }),
-        INITIAL_CLUSTER_STATE,
-      );
-
-      setClusters(nextClusters);
-
-      entries.forEach(([key, value]) => {
-        if (value.errorMessage) {
-          toast.error(ERROR_MESSAGES[key]);
-        }
-      });
     }
 
-    void loadAllClusters();
+    void loadAll();
 
     return () => {
       cancelled = true;
     };
   }, []);
 
+  const retryFeatured = useCallback(async () => {
+    setFeatured((s) => ({ ...s, errorMessage: null, isLoading: true }));
+    const toastId = toast.loading("Đang tải lại sản phẩm nổi bật...");
+    try {
+      const products = await fetchFeatured();
+      setFeatured({ errorMessage: null, isLoading: false, products });
+      toast.success("Đã cập nhật sản phẩm nổi bật.", { id: toastId });
+    } catch {
+      const msg = "Không thể tải sản phẩm nổi bật.";
+      setFeatured({ errorMessage: msg, isLoading: false, products: [] });
+      toast.error(msg, { id: toastId });
+    }
+  }, []);
+
+  const retryNewArrivals = useCallback(async () => {
+    setNewArrivals((s) => ({ ...s, errorMessage: null, isLoading: true }));
+    const toastId = toast.loading("Đang tải lại sản phẩm mới...");
+    try {
+      const excludeIds = new Set(featured.products.map((v) => v.id));
+      const products = await fetchNewArrivals(excludeIds);
+      setNewArrivals({ errorMessage: null, isLoading: false, products });
+      toast.success("Đã cập nhật sản phẩm mới.", { id: toastId });
+    } catch {
+      const msg = "Không thể tải sản phẩm mới cập nhật.";
+      setNewArrivals({ errorMessage: msg, isLoading: false, products: [] });
+      toast.error(msg, { id: toastId });
+    }
+  }, [featured.products]);
+
   return (
     <div ref={rootRef}>
       <HomeProductCluster
         description=""
         emptyText="Chưa có sản phẩm nổi bật."
-        errorMessage={clusters.featured.errorMessage}
-        eyebrow="01 / Featured"
+        errorMessage={featured.errorMessage}
+        eyebrow="04 / Featured"
         href="/san-pham?sort=score"
-        isLoading={clusters.featured.isLoading}
-        onRetry={() => void loadCluster("featured", true)}
-        products={clusters.featured.products}
+        isLoading={featured.isLoading}
+        onRetry={() => void retryFeatured()}
+        products={featured.products}
         title="Sản phẩm nổi bật"
       />
 
       <HomeProductCluster
         description=""
-        emptyText="Hiện chưa có sản phẩm đang giảm giá."
-        errorMessage={clusters.deals.errorMessage}
-        eyebrow="02 / Promotion"
-        href="/san-pham?sort=price_asc"
-        isLoading={clusters.deals.isLoading}
-        onRetry={() => void loadCluster("deals", true)}
-        products={clusters.deals.products}
-        title="Đang giảm giá"
-      />
-
-      <HomeProductCluster
-        description=""
-        emptyText="Chưa có dữ liệu sản phẩm bán chạy."
-        errorMessage={clusters.bestSellers.errorMessage}
-        eyebrow="03 / Best sellers"
-        href="/san-pham?sort=score"
-        isLoading={clusters.bestSellers.isLoading}
-        onRetry={() => void loadCluster("bestSellers", true)}
-        products={clusters.bestSellers.products}
-        title="Sản phẩm bán chạy"
-      />
-
-      <HomeProductCluster
-        description=""
-        emptyText="Chưa có sản phẩm mới để hiển thị."
-        errorMessage={clusters.newArrivals.errorMessage}
-        eyebrow="04 / New stock"
+        emptyText="Chưa có sản phẩm mới cập nhật."
+        errorMessage={newArrivals.errorMessage}
+        eyebrow="05 / New stock"
         href="/san-pham?sort=newest"
-        isLoading={clusters.newArrivals.isLoading}
-        onRetry={() => void loadCluster("newArrivals", true)}
-        products={clusters.newArrivals.products}
-        title="Sản phẩm mới"
+        isLoading={newArrivals.isLoading}
+        onRetry={() => void retryNewArrivals()}
+        products={newArrivals.products}
+        title="Mới cập nhật"
       />
     </div>
   );
