@@ -15,9 +15,23 @@ function parseTimeout(value: string | undefined): number {
   return parsedValue;
 }
 
+function resolveBaseUrl() {
+  const configuredBaseUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+
+  if (configuredBaseUrl && configuredBaseUrl !== "same-origin") {
+    return configuredBaseUrl;
+  }
+
+  if (configuredBaseUrl === "same-origin" && typeof window !== "undefined") {
+    return window.location.origin;
+  }
+
+  return DEFAULT_API_URL;
+}
+
 export function getApiConfig() {
   return {
-    baseUrl: process.env.NEXT_PUBLIC_API_URL?.trim() || DEFAULT_API_URL,
+    baseUrl: resolveBaseUrl(),
     timeoutMs: parseTimeout(process.env.NEXT_PUBLIC_API_TIMEOUT_MS),
   };
 }

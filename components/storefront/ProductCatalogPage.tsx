@@ -122,6 +122,7 @@ export default function ProductCatalogPage() {
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const [isFiltersReady, setIsFiltersReady] = useState(false);
   const [isProductOptionsLoaded, setIsProductOptionsLoaded] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
@@ -178,15 +179,50 @@ export default function ProductCatalogPage() {
   const filteredProductOptions = useMemo(
     () =>
       products.filter((product) => {
+        // Sản phẩm không có categoryId được coi là "không phân loại" — cho qua mọi category filter
         const matchesCategory =
           !selectedCategoryScopeIds
-          || (product.categoryId ? selectedCategoryScopeIds.has(product.categoryId) : false);
+          || !product.categoryId
+          || selectedCategoryScopeIds.has(product.categoryId);
         const matchesBrand = !selectedBrandId || product.brandId === selectedBrandId;
 
         return matchesCategory && matchesBrand;
       }),
     [products, selectedBrandId, selectedCategoryScopeIds],
   );
+
+  // Brands có sản phẩm trong danh mục đang chọn
+  const filteredBrandOptions = useMemo(() => {
+    if (!isProductOptionsLoaded || !selectedCategoryScopeIds) return brands;
+
+    const brandIdsInScope = new Set(
+      products
+        .filter((p) => p.categoryId && selectedCategoryScopeIds.has(p.categoryId))
+        .map((p) => p.brandId)
+        .filter((id): id is string => Boolean(id)),
+    );
+
+    if (brandIdsInScope.size === 0) return brands;
+    return brands.filter((b) => brandIdsInScope.has(b.id));
+  }, [brands, isProductOptionsLoaded, products, selectedCategoryScopeIds]);
+
+  // Danh mục có sản phẩm của hãng đang chọn
+  const filteredCategoryOptions = useMemo(() => {
+    if (!isProductOptionsLoaded || !selectedBrandId) return categoryOptions;
+
+    const categoryIdsForBrand = new Set(
+      products
+        .filter((p) => p.brandId === selectedBrandId && p.categoryId)
+        .map((p) => p.categoryId as string),
+    );
+
+    if (categoryIdsForBrand.size === 0) return categoryOptions;
+
+    return categoryOptions.filter((cat) => {
+      const scopeIds = collectCategoryScopeIds(categoryTree, cat.id);
+      return [...categoryIdsForBrand].some((id) => scopeIds.has(id));
+    });
+  }, [categoryOptions, categoryTree, isProductOptionsLoaded, products, selectedBrandId]);
 
   const updateQuery = useCallback((
     updates: Record<string, string | null | undefined>,
@@ -291,6 +327,8 @@ export default function ProductCatalogPage() {
       } else {
         toast.error("Không thể tải danh mục sản phẩm.");
       }
+
+      setIsFiltersReady(true);
     }
 
     void loadInitialFilters();
@@ -368,6 +406,10 @@ export default function ProductCatalogPage() {
   }, [filteredProductOptions, isProductOptionsLoaded, selectedProductSlugValue, updateQuery]);
 
   useEffect(() => {
+    // Nếu URL có slug filter, chờ brands + categories load xong trước
+    // để tránh gọi API với categoryId/brandId rỗng
+    if (!isFiltersReady && (selectedCategorySlug || selectedBrandSlug)) return;
+
     async function loadVariants() {
       setIsLoading(true);
       setErrorMessage(null);
@@ -404,7 +446,7 @@ export default function ProductCatalogPage() {
     }
 
     void loadVariants();
-  }, [keyword, selectedProductId, sort, page, limit, priceMax, priceMin, selectedBrandId, selectedCategoryId]);
+  }, [keyword, selectedProductId, sort, page, limit, priceMax, priceMin, selectedBrandId, selectedCategoryId, isFiltersReady, selectedCategorySlug, selectedBrandSlug]);
 
   const startItem = total === 0 ? 0 : (page - 1) * limit + 1;
   const endItem = Math.min(page * limit, total);
@@ -454,26 +496,28 @@ export default function ProductCatalogPage() {
             Xóa
           </button>
         </div>
-        <section className={`${isFilterPanelOpen ? "grid" : "hidden"} mb-6 gap-4 lg:grid lg:grid-cols-3`}>
-          <div className="border border-border bg-background p-4 lg:col-span-2">
+        <section className={`${isFilterPanelOpen ? "grid" : "hidden"} mb-6 gap-3 lg:grid lg:grid-cols-[1fr_220px]`}>
+          {/* Panel trái: Bộ lọc chính */}
+          <div className="border border-border bg-background p-4">
             <p className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Bộ lọc</p>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(140px,0.75fr)_minmax(180px,0.95fr)_minmax(260px,1.3fr)_minmax(220px,1.1fr)_150px]">
-              <label className="grid gap-2 text-sm sm:col-span-2 xl:col-span-5">
-                <span className="font-semibold">Từ khóa</span>
-                <input
-                  className="h-11 border border-border px-3 outline-none focus:border-primary sm:h-10"
-                  defaultValue={keyword}
-                  ref={keywordInputRef}
-                  onChange={(event) => handleKeywordChange(event.target.value)}
-                  placeholder="VD: schneider, MCB-2P-20A..."
-                  type="text"
-                />
-              </label>
 
-              <label className="grid gap-2 text-sm">
+            <label className="mb-3 grid gap-1.5 text-sm">
+              <span className="font-semibold">Từ khóa</span>
+              <input
+                className="h-10 border border-border bg-background px-3 outline-none transition-colors focus:border-primary"
+                defaultValue={keyword}
+                ref={keywordInputRef}
+                onChange={(event) => handleKeywordChange(event.target.value)}
+                placeholder="VD: schneider, MCB-2P-20A, ATV320..."
+                type="text"
+              />
+            </label>
+
+            <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-4">
+              <label className="grid min-w-0 gap-1.5 text-sm">
                 <span className="font-semibold">Sắp xếp</span>
                 <select
-                  className="h-11 cursor-pointer border border-border bg-background px-3 outline-none focus:border-primary sm:h-10"
+                  className="h-10 w-full cursor-pointer border border-border bg-background px-3 outline-none transition-colors focus:border-primary"
                   onChange={(event) => updateQuery({ sort: event.target.value as SortOption }, { resetPage: true })}
                   value={sort}
                 >
@@ -485,24 +529,27 @@ export default function ProductCatalogPage() {
                 </select>
               </label>
 
-              <label className="grid gap-2 text-sm">
-                <span className="font-semibold">Danh mục</span>
+              <label className="grid min-w-0 gap-1.5 text-sm">
+                <span className="font-semibold">
+                  Danh mục
+                  {selectedBrandId && filteredCategoryOptions.length < categoryOptions.length && (
+                    <span className="ml-1 font-normal text-muted-foreground">
+                      ({filteredCategoryOptions.length})
+                    </span>
+                  )}
+                </span>
                 <select
-                  className="h-11 cursor-pointer border border-border bg-background px-3 outline-none focus:border-primary sm:h-10"
+                  className="h-10 w-full cursor-pointer border border-border bg-background px-3 outline-none transition-colors focus:border-primary"
                   onChange={(event) =>
                     updateQuery(
-                      {
-                        categorySlug: event.target.value,
-                        productId: null,
-                        productSlug: null,
-                      },
+                      { categorySlug: event.target.value, productId: null, productSlug: null },
                       { resetPage: true },
                     )
                   }
                   value={selectedCategorySlug}
                 >
                   <option value="">Tất cả danh mục</option>
-                  {categoryOptions.map((category) => (
+                  {filteredCategoryOptions.map((category) => (
                     <option key={category.id} value={category.slug}>
                       {category.label}
                     </option>
@@ -510,24 +557,53 @@ export default function ProductCatalogPage() {
                 </select>
               </label>
 
-              <label className="grid gap-2 text-sm">
-                <span className="font-semibold">Sản phẩm</span>
+              <label className="grid min-w-0 gap-1.5 text-sm">
+                <span className="font-semibold">
+                  Thương hiệu
+                  {selectedCategoryId && filteredBrandOptions.length < brands.length && (
+                    <span className="ml-1 font-normal text-muted-foreground">
+                      ({filteredBrandOptions.length})
+                    </span>
+                  )}
+                </span>
                 <select
-                  className="h-11 cursor-pointer border border-border bg-background px-3 outline-none focus:border-primary sm:h-10"
-                  disabled={!isProductOptionsLoaded && products.length === 0}
+                  className="h-10 w-full cursor-pointer border border-border bg-background px-3 outline-none transition-colors focus:border-primary"
                   onChange={(event) =>
                     updateQuery(
-                      {
-                        productSlug: event.target.value,
-                        productId: null,
-                      },
+                      { brandSlug: event.target.value, productId: null, productSlug: null },
                       { resetPage: true },
                     )
+                  }
+                  value={selectedBrandSlug}
+                >
+                  <option value="">Tất cả thương hiệu</option>
+                  {filteredBrandOptions.map((brand) => (
+                    <option key={brand.id} value={brand.slug}>
+                      {brand.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="grid min-w-0 gap-1.5 text-sm">
+                <span className="font-semibold">
+                  Sản phẩm
+                  {(selectedCategorySlug || selectedBrandSlug) && filteredProductOptions.length > 0 && (
+                    <span className="ml-1 font-normal text-muted-foreground">
+                      ({filteredProductOptions.length})
+                    </span>
+                  )}
+                </span>
+                <select
+                  className="h-10 w-full cursor-pointer border border-border bg-background px-3 outline-none transition-colors focus:border-primary disabled:opacity-50"
+                  disabled={!isProductOptionsLoaded && products.length === 0}
+                  onChange={(event) =>
+                    updateQuery({ productSlug: event.target.value, productId: null }, { resetPage: true })
                   }
                   value={selectedProductSlugValue}
                 >
                   <option value="">
-                    {isProductOptionsLoaded ? "Tất cả sản phẩm" : "Đang tải sản phẩm..."}
+                    {isProductOptionsLoaded ? "Tất cả sản phẩm" : "Đang tải..."}
                   </option>
                   {filteredProductOptions.map((product) => (
                     <option key={product.id} value={product.slug}>
@@ -536,51 +612,32 @@ export default function ProductCatalogPage() {
                   ))}
                 </select>
               </label>
+            </div>
 
-              <label className="grid gap-2 text-sm">
-                <span className="font-semibold">Thương hiệu</span>
-                <select
-                  className="h-11 cursor-pointer border border-border bg-background px-3 outline-none focus:border-primary sm:h-10"
-                  onChange={(event) =>
-                    updateQuery(
-                      {
-                        brandSlug: event.target.value,
-                        productId: null,
-                        productSlug: null,
-                      },
-                      { resetPage: true },
-                    )
-                  }
-                  value={selectedBrandSlug}
-                >
-                  <option value="">Tất cả thương hiệu</option>
-                  {brands.map((brand) => (
-                    <option key={brand.id} value={brand.slug}>
-                      {brand.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <div className="flex items-end">
-                <button
-                  type="button"
-                  onClick={resetAllFilters}
-                  className="inline-flex h-11 w-full cursor-pointer items-center justify-center whitespace-nowrap border border-border px-3 text-sm font-semibold transition-colors hover:border-primary hover:text-primary sm:h-10"
-                >
-                  Xóa bộ lọc
-                </button>
-              </div>
+            <div className="mt-3 flex justify-end">
+              <button
+                type="button"
+                onClick={resetAllFilters}
+                className="inline-flex h-9 cursor-pointer items-center gap-2 border border-border px-4 text-sm font-semibold transition-colors hover:border-primary hover:text-primary"
+              >
+                Xóa bộ lọc
+                {activeFilterCount > 0 && (
+                  <span className="inline-flex size-5 items-center justify-center bg-primary text-[10px] font-black text-primary-foreground">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
             </div>
           </div>
 
+          {/* Panel phải: Khoảng giá */}
           <div className="border border-border bg-background p-4">
             <p className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Khoảng giá</p>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-              <label className="grid gap-2 text-sm">
+            <div className="grid gap-3">
+              <label className="grid gap-1.5 text-sm">
                 <span className="font-semibold">Giá thấp nhất</span>
                 <input
-                  className="input-no-spin h-11 border border-border px-3 outline-none focus:border-primary sm:h-10"
+                  className="input-no-spin h-10 border border-border bg-background px-3 outline-none transition-colors focus:border-primary"
                   min={0}
                   onWheel={(event) => event.currentTarget.blur()}
                   onChange={(event) => updateQuery({ priceMin: event.target.value }, { resetPage: true })}
@@ -589,11 +646,10 @@ export default function ProductCatalogPage() {
                   value={priceMin}
                 />
               </label>
-
-              <label className="grid gap-2 text-sm">
+              <label className="grid gap-1.5 text-sm">
                 <span className="font-semibold">Giá cao nhất</span>
                 <input
-                  className="input-no-spin h-11 border border-border px-3 outline-none focus:border-primary sm:h-10"
+                  className="input-no-spin h-10 border border-border bg-background px-3 outline-none transition-colors focus:border-primary"
                   min={0}
                   onWheel={(event) => event.currentTarget.blur()}
                   onChange={(event) => updateQuery({ priceMax: event.target.value }, { resetPage: true })}

@@ -90,7 +90,42 @@ async function parseResponse<T>(response: Response, responseType: ApiResponseTyp
 
 async function getErrorDetails(response: Response) {
   const details = await response.text();
-  return details.trim();
+  const trimmedDetails = details.trim();
+  const normalizedDetails = trimmedDetails.toLowerCase();
+  const fallbackMessage = `Không thể tải dữ liệu từ API (HTTP ${response.status}).`;
+  const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+
+  if (!trimmedDetails) {
+    return { details: "", message: fallbackMessage };
+  }
+
+  if (
+    contentType.includes("text/html") ||
+    normalizedDetails.startsWith("<!doctype html") ||
+    normalizedDetails.startsWith("<html")
+  ) {
+    return { details: "", message: fallbackMessage };
+  }
+
+  if (contentType.includes("json")) {
+    try {
+      const parsed = JSON.parse(trimmedDetails) as { error?: unknown; message?: unknown };
+      const parsedMessage = parsed.message ?? parsed.error;
+
+      if (Array.isArray(parsedMessage)) {
+        const message = parsedMessage.filter((item) => typeof item === "string").join(", ");
+        return { details: trimmedDetails, message: message || fallbackMessage };
+      }
+
+      if (typeof parsedMessage === "string" && parsedMessage.trim()) {
+        return { details: trimmedDetails, message: parsedMessage.trim() };
+      }
+    } catch {
+      return { details: trimmedDetails, message: fallbackMessage };
+    }
+  }
+
+  return { details: trimmedDetails, message: trimmedDetails };
 }
 
 async function request<T>(path: string, options: ApiRequestOptions = {}) {
@@ -116,9 +151,9 @@ async function request<T>(path: string, options: ApiRequestOptions = {}) {
     });
 
     if (!response.ok) {
-      const details = await getErrorDetails(response);
+      const { details, message } = await getErrorDetails(response);
       throw new ApiError(
-        details || `Request failed with status ${response.status}`,
+        message,
         response.status,
         url.toString(),
         details,
