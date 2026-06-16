@@ -1,7 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef } from "react";
+import { ArrowRight } from "lucide-react";
 import { gsap } from "gsap";
+import HeroSearchConsole from "@/components/home/HeroSearchConsole";
 import IndustrialMotion2D from "@/components/home/IndustrialMotion2D";
 
 const Hero = () => {
@@ -17,7 +20,7 @@ const Hero = () => {
 
       if (badgeRef.current) {
         tl.fromTo(
-        badgeRef.current,
+          badgeRef.current,
           { opacity: 0, y: -10 },
           { opacity: 1, y: 0, duration: reducedMotion ? 0.01 : 0.6 },
           0,
@@ -49,11 +52,11 @@ const Hero = () => {
   }, []);
 
   return (
-    <section className="industrial-grid relative w-full overflow-hidden bg-white py-16 lg:py-28">
+    <section className="industrial-grid relative w-full overflow-hidden bg-white py-12 lg:py-20">
       <div className="absolute left-0 top-0 h-1 w-full bg-primary" />
 
-      <div className="container mx-auto flex flex-col items-center gap-10 px-4 lg:flex-row lg:gap-16">
-        <div className="z-10 flex-1 lg:max-w-lg">
+      <div className="container mx-auto flex flex-col items-start gap-10 px-4 lg:flex-row lg:gap-16">
+        <div className="z-10 w-full flex-1 lg:max-w-lg">
           <div
             ref={badgeRef}
             className="mb-6 inline-flex items-center gap-2 border border-primary/30 bg-primary/8 px-3 py-1"
@@ -65,41 +68,46 @@ const Hero = () => {
           </div>
 
           <div ref={textRef}>
-            <h1 className="mb-5 text-5xl font-black leading-none tracking-tight lg:text-[4.5rem]">
+            <h1 className="mb-4 text-4xl font-black leading-none tracking-tight lg:text-[3.5rem]">
               Linh kiện <br />
               công nghiệp <span className="text-primary">chính xác.</span>
             </h1>
 
-            <p className="mb-3 border-l-4 border-primary bg-muted py-3 pl-4 pr-4 text-base font-medium leading-relaxed text-muted-foreground">
-              Tra cứu Part Number · SKU · Datasheet tức thì.
-              <br />
-              Đặt hàng lẻ hoặc báo giá bulk cho doanh nghiệp.
-            </p>
-
-            <p className="mb-9 font-mono text-xs uppercase tracking-[0.15em] text-muted-foreground">
+            <p className="mb-5 font-mono text-xs uppercase tracking-[0.15em] text-muted-foreground">
               Thiết bị đóng cắt · Cảm biến · PLC · Robot · Băng chuyền
             </p>
 
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="button"
-                className="border-b-4 border-black/20 bg-primary px-9 py-4 font-semibold text-white transition-all hover:brightness-110 active:translate-y-0.5"
+            <HeroSearchConsole />
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link
+                href="/san-pham"
+                className="inline-flex h-10 cursor-pointer items-center gap-2 border border-border bg-background px-4 text-sm font-black transition-colors hover:border-primary hover:text-primary"
               >
-                Tìm linh kiện
-              </button>
-              <button
-                type="button"
-                className="border border-foreground bg-white px-9 py-4 font-semibold text-foreground transition-colors hover:bg-muted"
+                Xem tất cả sản phẩm
+                <ArrowRight className="size-4" />
+              </Link>
+              <Link
+                href="/thuong-hieu"
+                className="inline-flex h-10 cursor-pointer items-center gap-2 border border-border bg-background px-4 text-sm font-black transition-colors hover:border-primary hover:text-primary"
+              >
+                Tra theo thương hiệu
+                <ArrowRight className="size-4" />
+              </Link>
+              <Link
+                href="/tai-khoan/yeu-cau-bao-gia"
+                className="inline-flex h-10 cursor-pointer items-center gap-2 border border-primary bg-primary px-4 text-sm font-black text-primary-foreground transition-colors hover:bg-primary/90"
               >
                 Gửi yêu cầu báo giá
-              </button>
+                <ArrowRight className="size-4" />
+              </Link>
             </div>
           </div>
         </div>
 
         <div
           ref={sceneWrapRef}
-          className="relative w-full flex-1 lg:max-w-2xl"
+          className="relative hidden w-full flex-1 lg:block lg:max-w-xl"
           style={{ aspectRatio: "4/3" }}
         >
           <div className="pointer-events-none absolute left-0 top-0 h-5 w-5 border-l-2 border-t-2 border-primary" />
