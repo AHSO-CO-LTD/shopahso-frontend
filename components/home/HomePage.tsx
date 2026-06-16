@@ -1,4 +1,5 @@
 import Hero from "@/components/home/Hero";
+import HomeBanner from "@/components/home/HomeBanner";
 import HomeCategoryNav from "@/components/home/HomeCategoryNav";
 import HomeMerchandiseSections from "@/components/home/HomeMerchandiseSections";
 import HomePartnerBrands from "@/components/home/HomePartnerBrands";
@@ -10,15 +11,17 @@ export default function HomePage() {
     <div className="bg-background text-foreground">
       {/* Section 1: Hero + Search */}
       <Hero />
-      {/* Section 2: Promotions (auto-hides when empty) */}
+      {/* Section 2: Admin-managed banner images */}
+      <HomeBanner />
+      {/* Section 3: Promotions (auto-hides when empty) */}
       <HomePromotionStrip />
-      {/* Section 3: Category navigation */}
+      {/* Section 4: Category navigation */}
       <HomeCategoryNav />
-      {/* Section 4: Featured brands */}
+      {/* Section 5: Featured brands */}
       <HomePartnerBrands />
-      {/* Section 5+6: Featured products + New arrivals */}
+      {/* Section 6+7: Featured products + New arrivals */}
       <HomeMerchandiseSections />
-      {/* Section 7: Trust / B2B support */}
+      {/* Section 8: Trust / B2B support */}
       <ValueProps />
     </div>
   );
