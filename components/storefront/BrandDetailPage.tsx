@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   listCatalogBrands,
   listCatalogCategoriesTree,
+  listCatalogVariants,
   searchCatalogVariants,
 } from "@/lib/api/services/catalog-variants.service";
 import type { Brand } from "@/lib/brand/types";
@@ -36,6 +37,26 @@ function flattenCategories(nodes: CategoryTreeNode[], depth = 0): { id: string; 
     { id: node.id, name: node.name, depth },
     ...flattenCategories(node.children, depth + 1),
   ]);
+}
+
+function hasBrandProducts(node: CategoryTreeNode, brandCategoryIds: Set<string>): boolean {
+  if (brandCategoryIds.has(node.id)) return true;
+  return node.children.some((child) => hasBrandProducts(child, brandCategoryIds));
+}
+
+function flattenCategoriesForBrand(
+  nodes: CategoryTreeNode[],
+  brandCategoryIds: Set<string>,
+  depth = 0,
+): { id: string; name: string; depth: number }[] {
+  const result: { id: string; name: string; depth: number }[] = [];
+  for (const node of nodes) {
+    if (hasBrandProducts(node, brandCategoryIds)) {
+      result.push({ id: node.id, name: node.name, depth });
+      result.push(...flattenCategoriesForBrand(node.children, brandCategoryIds, depth + 1));
+    }
+  }
+  return result;
 }
 
 export default function BrandDetailPage({ slug }: { slug: string }) {
@@ -97,7 +118,25 @@ export default function BrandDetailPage({ slug }: { slug: string }) {
         if (cancelled) return;
 
         setBrands(brandsData);
-        setCategories(flattenCategories(categoryTree));
+
+        const resolvedBrandId = brandsData.find((b) => b.slug === slug)?.id;
+
+        let filteredCats = flattenCategories(categoryTree);
+        if (resolvedBrandId) {
+          try {
+            const brandVariants = await listCatalogVariants({ brandId: resolvedBrandId, limit: 500 });
+            const brandCategoryIds = new Set(
+              brandVariants.map((v) => v.category?.id).filter((id): id is string => Boolean(id)),
+            );
+            if (brandCategoryIds.size > 0) {
+              filteredCats = flattenCategoriesForBrand(categoryTree, brandCategoryIds);
+            }
+          } catch {
+            // optional — fall back to full category tree
+          }
+        }
+
+        setCategories(filteredCats);
       } catch {
         if (!cancelled) {
           setErrorMessage("Không thể tải dữ liệu thương hiệu.");
