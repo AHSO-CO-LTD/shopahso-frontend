@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   listCatalogBrands,
   listCatalogCategoriesTree,
+  listCatalogProducts,
   searchCatalogVariants,
 } from "@/lib/api/services/catalog-variants.service";
 import type { Brand } from "@/lib/brand/types";
@@ -36,6 +37,26 @@ function flattenCategories(nodes: CategoryTreeNode[], depth = 0): { id: string; 
     { id: node.id, name: node.name, depth },
     ...flattenCategories(node.children, depth + 1),
   ]);
+}
+
+function hasBrandProducts(node: CategoryTreeNode, brandCategoryIds: Set<string>): boolean {
+  if (brandCategoryIds.has(node.id)) return true;
+  return node.children.some((child) => hasBrandProducts(child, brandCategoryIds));
+}
+
+function flattenCategoriesForBrand(
+  nodes: CategoryTreeNode[],
+  brandCategoryIds: Set<string>,
+  depth = 0,
+): { id: string; name: string; depth: number }[] {
+  const result: { id: string; name: string; depth: number }[] = [];
+  for (const node of nodes) {
+    if (hasBrandProducts(node, brandCategoryIds)) {
+      result.push({ id: node.id, name: node.name, depth });
+      result.push(...flattenCategoriesForBrand(node.children, brandCategoryIds, depth + 1));
+    }
+  }
+  return result;
 }
 
 export default function BrandDetailPage({ slug }: { slug: string }) {
@@ -89,15 +110,30 @@ export default function BrandDetailPage({ slug }: { slug: string }) {
       setErrorMessage(null);
 
       try {
-        const [brandsData, categoryTree] = await Promise.all([
+        const [brandsData, categoryTree, productOptionsRaw] = await Promise.all([
           listCatalogBrands(),
           listCatalogCategoriesTree(),
+          listCatalogProducts(),
         ]);
 
         if (cancelled) return;
 
         setBrands(brandsData);
-        setCategories(flattenCategories(categoryTree));
+
+        const resolvedBrandId = brandsData.find((b) => b.slug === slug)?.id;
+        const productOptions = Array.isArray(productOptionsRaw) ? productOptionsRaw : productOptionsRaw.items;
+        const brandCategoryIds = new Set(
+          productOptions
+            .filter((p) => p.brandId === resolvedBrandId)
+            .map((p) => p.categoryId)
+            .filter((id): id is string => Boolean(id)),
+        );
+
+        const filteredCats = brandCategoryIds.size > 0
+          ? flattenCategoriesForBrand(categoryTree, brandCategoryIds)
+          : flattenCategories(categoryTree);
+
+        setCategories(filteredCats);
       } catch {
         if (!cancelled) {
           setErrorMessage("Không thể tải dữ liệu thương hiệu.");
