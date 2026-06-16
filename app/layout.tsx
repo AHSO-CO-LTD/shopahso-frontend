@@ -97,7 +97,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="vi" className={`${fontSans.variable} ${fontMono.variable} h-full antialiased`}>
+    <html lang="vi" className={`${fontSans.variable} ${fontMono.variable} h-full antialiased`} suppressHydrationWarning>
       <body className="min-h-[100dvh] flex flex-col font-sans selection:bg-primary selection:text-white">
         <Script
           id="shopahso-history-restore-reload"
