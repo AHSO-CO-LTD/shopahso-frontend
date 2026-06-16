@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   listCatalogBrands,
   listCatalogCategoriesTree,
-  listCatalogProducts,
+  listCatalogVariants,
   searchCatalogVariants,
 } from "@/lib/api/services/catalog-variants.service";
 import type { Brand } from "@/lib/brand/types";
@@ -110,10 +110,9 @@ export default function BrandDetailPage({ slug }: { slug: string }) {
       setErrorMessage(null);
 
       try {
-        const [brandsData, categoryTree, productOptionsRaw] = await Promise.all([
+        const [brandsData, categoryTree] = await Promise.all([
           listCatalogBrands(),
           listCatalogCategoriesTree(),
-          listCatalogProducts(),
         ]);
 
         if (cancelled) return;
@@ -121,17 +120,21 @@ export default function BrandDetailPage({ slug }: { slug: string }) {
         setBrands(brandsData);
 
         const resolvedBrandId = brandsData.find((b) => b.slug === slug)?.id;
-        const productOptions = Array.isArray(productOptionsRaw) ? productOptionsRaw : productOptionsRaw.items;
-        const brandCategoryIds = new Set(
-          productOptions
-            .filter((p) => p.brandId === resolvedBrandId)
-            .map((p) => p.categoryId)
-            .filter((id): id is string => Boolean(id)),
-        );
 
-        const filteredCats = brandCategoryIds.size > 0
-          ? flattenCategoriesForBrand(categoryTree, brandCategoryIds)
-          : flattenCategories(categoryTree);
+        let filteredCats = flattenCategories(categoryTree);
+        if (resolvedBrandId) {
+          try {
+            const brandVariants = await listCatalogVariants({ brandId: resolvedBrandId, limit: 500 });
+            const brandCategoryIds = new Set(
+              brandVariants.map((v) => v.category?.id).filter((id): id is string => Boolean(id)),
+            );
+            if (brandCategoryIds.size > 0) {
+              filteredCats = flattenCategoriesForBrand(categoryTree, brandCategoryIds);
+            }
+          } catch {
+            // optional — fall back to full category tree
+          }
+        }
 
         setCategories(filteredCats);
       } catch {
