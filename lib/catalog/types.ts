@@ -21,6 +21,7 @@ export type CatalogVariantProduct = {
   categoryId?: string;
   brandId?: string | null;
   description?: string | null;
+  datasheetUrl?: string | null;
 };
 
 export type CatalogVariantTax = {
