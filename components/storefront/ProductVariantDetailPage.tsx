@@ -255,6 +255,20 @@ export default function ProductVariantDetailPage({ slug }: { slug: string }) {
                 </div>
               </section>
 
+              {variant.product.datasheetUrl ? (
+                <div className="mt-6">
+                  <a
+                    className="inline-flex h-10 items-center gap-2 border border-border bg-muted/30 px-4 text-sm font-semibold transition-colors hover:border-primary hover:bg-primary hover:text-primary-foreground"
+                    href={variant.product.datasheetUrl}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                  >
+                    <FileText className="size-4" />
+                    Tải Datasheet (PDF)
+                  </a>
+                </div>
+              ) : null}
+
               <section className="mt-6 border border-border">
                 <div className="border-b border-border bg-muted/20 px-4 py-3">
                   <h2 className="text-sm font-semibold">Mô tả sản phẩm</h2>
