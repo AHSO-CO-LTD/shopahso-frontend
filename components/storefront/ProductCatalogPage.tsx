@@ -50,7 +50,7 @@ function extractProductsFromVariants(items: CatalogVariant[]): CatalogProductFil
         name: variant.product.name,
         slug: variant.product.slug,
         brandId: variant.product.brandId ?? variant.brand?.id ?? null,
-        categoryId: variant.product.categoryId ?? variant.category.id,
+        categoryId: variant.product.categoryId ?? variant.category?.id,
       },
     ];
   });
@@ -349,6 +349,7 @@ export default function ProductCatalogPage() {
         const totalPagesToLoad = Math.max(firstPage.totalPages, 1);
 
         for (let currentPage = 2; currentPage <= totalPagesToLoad; currentPage += 1) {
+          if (cancelled) break;
           const pageResponse = await searchCatalogVariants({
             page: currentPage,
             limit: 100,
@@ -410,6 +411,8 @@ export default function ProductCatalogPage() {
     // để tránh gọi API với categoryId/brandId rỗng
     if (!isFiltersReady && (selectedCategorySlug || selectedBrandSlug)) return;
 
+    let cancelled = false;
+
     async function loadVariants() {
       setIsLoading(true);
       setErrorMessage(null);
@@ -427,6 +430,8 @@ export default function ProductCatalogPage() {
           priceMin: parsePriceParam(priceMin),
         });
 
+        if (cancelled) return;
+
         setVariants(response.items);
         setTotal(response.total);
         setTotalPages(Math.max(response.totalPages, 1));
@@ -436,16 +441,18 @@ export default function ProductCatalogPage() {
           setProducts((current) => mergeProductOptions(current, productsFromVariants));
         }
       } catch (error) {
+        if (cancelled) return;
         setErrorMessage(error instanceof Error ? error.message : "Không thể tải danh sách sản phẩm.");
         setVariants([]);
         setTotal(0);
         setTotalPages(1);
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     }
 
     void loadVariants();
+    return () => { cancelled = true; };
   }, [keyword, selectedProductId, sort, page, limit, priceMax, priceMin, selectedBrandId, selectedCategoryId, isFiltersReady, selectedCategorySlug, selectedBrandSlug]);
 
   const startItem = total === 0 ? 0 : (page - 1) * limit + 1;
