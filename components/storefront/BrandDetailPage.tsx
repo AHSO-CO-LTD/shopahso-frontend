@@ -106,6 +106,12 @@ export default function BrandDetailPage({ slug }: { slug: string }) {
     let cancelled = false;
 
     async function bootstrap() {
+      // Reset filter state when navigating between brands
+      setQ("");
+      setDebouncedQ("");
+      setCategoryId("");
+      setSort("relevance");
+      setPage(1);
       setIsBootstrapping(true);
       setErrorMessage(null);
 
