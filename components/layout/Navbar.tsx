@@ -22,6 +22,7 @@ import type { CatalogVariant } from "@/lib/catalog/types";
 import { useCart } from "@/components/cart/CartProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { Button } from "@/components/ui/button";
+import { trackAnalyticsEvent } from "@/lib/analytics/events";
 
 const Navbar = () => {
   const navRef = useRef<HTMLElement>(null);
@@ -145,6 +146,11 @@ const Navbar = () => {
       router.push("/san-pham");
       return;
     }
+
+    trackAnalyticsEvent("search_sku", {
+      location: "navbar",
+      search_term: keyword,
+    });
 
     const params = new URLSearchParams();
     params.set("q", keyword);

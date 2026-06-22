@@ -2,8 +2,12 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { Be_Vietnam_Pro, Roboto_Mono } from "next/font/google";
 import { Toaster } from "sonner";
+import AnalyticsScripts from "@/components/integrations/AnalyticsScripts";
 import AppChrome from "@/components/layout/AppChrome";
 import { AuthProvider } from "@/components/providers/AuthProvider";
+import JsonLd from "@/components/seo/JsonLd";
+import { absoluteUrl, SHOP_AHSO_DESCRIPTION, SITE_URL } from "@/lib/seo/config";
+import { buildOrganizationJsonLd } from "@/lib/seo/schema";
 import "./globals.css";
 
 const fontSans = Be_Vietnam_Pro({
@@ -19,8 +23,24 @@ const fontMono = Roboto_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ShopAHSO | Linh kiện công nghiệp chính xác",
-  description: "Hệ thống phân phối linh kiện, vật tư công nghiệp chính xác, tin cậy và hiệu suất cao.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "ShopAHSO | Linh kiện công nghiệp chính xác",
+    template: "%s | ShopAHSO",
+  },
+  description: SHOP_AHSO_DESCRIPTION,
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    description: SHOP_AHSO_DESCRIPTION,
+    images: [absoluteUrl("/logo.png")],
+    locale: "vi_VN",
+    siteName: "ShopAHSO",
+    title: "ShopAHSO | Linh kiện công nghiệp chính xác",
+    type: "website",
+    url: SITE_URL,
+  },
   icons: {
     icon: "/favicon.ico",
   },
@@ -104,6 +124,8 @@ export default function RootLayout({
           strategy="beforeInteractive"
           dangerouslySetInnerHTML={{ __html: historyRestoreReloadScript }}
         />
+        <AnalyticsScripts />
+        <JsonLd id="shopahso-organization-jsonld" data={buildOrganizationJsonLd()} />
         <AuthProvider>
           <AppChrome>{children}</AppChrome>
           <Toaster

@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { CartProvider } from "@/components/cart/CartProvider";
+import ZaloChatWidget from "@/components/integrations/ZaloChatWidget";
 import FloatingBannerModal from "@/components/layout/FloatingBannerModal";
 import Footer from "@/components/layout/Footer";
 import Navbar from "@/components/layout/Navbar";
@@ -23,6 +24,7 @@ export default function AppChrome({ children }: { children: React.ReactNode }) {
         <Footer />
         <CartDrawer />
         <FloatingBannerModal />
+        <ZaloChatWidget />
       </div>
     </CartProvider>
   );

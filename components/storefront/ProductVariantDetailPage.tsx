@@ -13,6 +13,7 @@ import { AddToCartButton } from "@/components/cart/AddToCartButton";
 import QuoteRequestModal from "@/components/quote-requests/QuoteRequestModal";
 import { getCatalogVariantPricingDisplay } from "@/lib/catalog/pricing";
 import type { CatalogVariant, CatalogVariantAttributeValue } from "@/lib/catalog/types";
+import { trackAnalyticsEvent } from "@/lib/analytics/events";
 import { FALLBACK_LOGO_IMAGE } from "@/lib/image-fallbacks";
 import { getPricingStatusBadgeClass, getPricingStatusLabel, isContactForPrice } from "@/lib/pricing-status";
 
@@ -259,9 +260,17 @@ export default function ProductVariantDetailPage({ slug }: { slug: string }) {
                 <div className="mt-6">
                   <a
                     className="inline-flex h-10 items-center gap-2 border border-border bg-muted/30 px-4 text-sm font-semibold transition-colors hover:border-primary hover:bg-primary hover:text-primary-foreground"
-                    href={variant.product.datasheetUrl}
-                    rel="noopener noreferrer"
-                    target="_blank"
+	                    href={variant.product.datasheetUrl}
+	                    onClick={() => {
+	                      trackAnalyticsEvent("view_datasheet", {
+	                        datasheet_url: variant.product.datasheetUrl,
+	                        product_slug: variant.product.slug,
+	                        sku: variant.sku,
+	                        variant_id: variant.id,
+	                      });
+	                    }}
+	                    rel="noopener noreferrer"
+	                    target="_blank"
                   >
                     <FileText className="size-4" />
                     Tải Datasheet (PDF)
@@ -368,8 +377,8 @@ export default function ProductVariantDetailPage({ slug }: { slug: string }) {
                     <table className="w-full table-fixed border-collapse text-sm">
                       <thead>
                         <tr className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                          <th className="w-2/3 border-b border-border px-4 py-2 text-left">Tên thông số</th>
-                          <th className="w-1/3 border-b border-border px-4 py-2 text-left">Giá trị</th>
+                          <th className="w-2/5 border-b border-border px-4 py-2 text-left">Tên thông số</th>
+                          <th className="w-3/5 border-b border-border px-4 py-2 text-left">Giá trị</th>
                         </tr>
                       </thead>
                       <tbody>
