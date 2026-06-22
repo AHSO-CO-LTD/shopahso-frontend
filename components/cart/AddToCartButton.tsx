@@ -3,6 +3,7 @@
 import type { MouseEvent } from "react";
 import { ShoppingCart } from "lucide-react";
 import { useCart } from "@/components/cart/CartProvider";
+import { trackAnalyticsEvent } from "@/lib/analytics/events";
 import { isContactForPrice, type PricingStatus } from "@/lib/pricing-status";
 
 export function AddToCartButton({
@@ -50,7 +51,11 @@ export function AddToCartButton({
       return;
     }
 
-    void addItem(variantId);
+    void addItem(variantId).then(() => {
+      trackAnalyticsEvent("add_to_cart", {
+        variant_id: variantId,
+      });
+    });
   }
 
   return (
