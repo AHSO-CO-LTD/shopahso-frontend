@@ -376,6 +376,7 @@ export default function StaffProductList() {
                                 fill
                                 sizes="68px"
                                 src={imageUrl}
+                                unoptimized
                               />
                             ) : (
                               <ImageOff aria-hidden="true" className="size-4 text-muted-foreground" />
