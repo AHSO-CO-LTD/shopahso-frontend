@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { FileText } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import ProductDescriptionRenderer from "@/components/storefront/ProductDescriptionRenderer";
 import RelatedVariantCarousel from "@/components/storefront/RelatedVariantCarousel";
@@ -68,9 +68,16 @@ export default function ProductVariantDetailPage({ slug, initialVariant }: { slu
   const [relatedErrorMessage, setRelatedErrorMessage] = useState<string | null>(null);
   const [quoteVariant, setQuoteVariant] = useState<CatalogVariant | null>(null);
 
-  // Ref holds the SSR variant so the effect can read it without being in the dep array.
-  // Cleared after first use so subsequent slug-changes re-fetch normally.
+  // Holds the latest SSR-prefetched variant. useLayoutEffect keeps it current with the prop
+  // so the useEffect below always sees the newest initialVariant before it runs.
   const ssrVariantRef = useRef<CatalogVariant | undefined>(initialVariant);
+
+  // useLayoutEffect runs synchronously after render but BEFORE useEffect.
+  // This ensures that when slug changes (client-side navigation), ssrVariantRef already
+  // holds the new initialVariant when the effect fires — so it correctly skips the fetch.
+  useLayoutEffect(() => {
+    ssrVariantRef.current = initialVariant;
+  });
 
   const technicalSpecs = useMemo<DisplaySpec[]>(() => {
     if (!variant) {
@@ -182,10 +189,11 @@ export default function ProductVariantDetailPage({ slug, initialVariant }: { slu
     }
 
     async function loadVariant() {
-      // If SSR already fetched this variant, skip the client-side fetch to avoid double-counting views
+      // Skip fetch when SSR already has data for this slug — avoids double view-count increment.
+      // ssrVariantRef is never cleared so both React StrictMode effect invocations see it.
       const ssrVariant = ssrVariantRef.current;
-      ssrVariantRef.current = undefined; // clear — future slug changes must re-fetch
       if (ssrVariant?.slug === slug) {
+        setVariant(ssrVariant); // keep state in sync (covers navigate-back case)
         if (ssrVariant.product.slug) await loadRelated(ssrVariant.product.slug);
         return;
       }
