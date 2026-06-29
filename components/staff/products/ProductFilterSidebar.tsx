@@ -163,40 +163,22 @@ export default function ProductFilterSidebar({
         <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           Thương hiệu
         </p>
-        <ul className="space-y-0.5">
-          <li>
-            <button
-              type="button"
-              className={[
-                "flex w-full items-center gap-1 py-1 px-1 text-sm transition-colors",
-                !selectedBrandId ? "font-semibold text-primary" : "text-foreground hover:text-primary",
-              ].join(" ")}
-              onClick={() => onBrandChange("")}
-            >
-              <span className="flex-1 text-left">Tất cả</span>
-              <span className="text-[10px] tabular-nums text-muted-foreground">{totalProducts}</span>
-            </button>
-          </li>
+        <select
+          aria-label="Chọn thương hiệu"
+          className="h-9 w-full cursor-pointer border border-border bg-background px-2 text-sm outline-none transition-colors hover:border-primary focus:border-primary"
+          value={selectedBrandId}
+          onChange={(e) => onBrandChange(e.target.value)}
+        >
+          <option value="">Tất cả ({totalProducts})</option>
           {sortedBrands.map((brand) => {
             const count = brandCounts.get(brand.id) ?? 0;
-            const isSelected = selectedBrandId === brand.id;
             return (
-              <li key={brand.id}>
-                <button
-                  type="button"
-                  className={[
-                    "flex w-full items-center gap-1 py-1 px-1 text-sm transition-colors",
-                    isSelected ? "font-semibold text-primary" : "text-foreground hover:text-primary",
-                  ].join(" ")}
-                  onClick={() => onBrandChange(isSelected ? "" : brand.id)}
-                >
-                  <span className="flex-1 truncate text-left">{brand.name}</span>
-                  <span className="text-[10px] tabular-nums text-muted-foreground">{count}</span>
-                </button>
-              </li>
+              <option key={brand.id} value={brand.id}>
+                {brand.name} ({count})
+              </option>
             );
           })}
-        </ul>
+        </select>
       </div>
 
       {/* Danh mục */}

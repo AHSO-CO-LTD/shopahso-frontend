@@ -9,9 +9,10 @@ import StaffLayout from "@/components/staff/StaffLayout";
 import ProductFilterSidebar from "@/components/staff/products/ProductFilterSidebar";
 import ProductManagementFilters from "@/components/staff/products/ProductManagementFilters";
 import { Button } from "@/components/ui/button";
-import { listBackofficeCategories } from "@/lib/api/services/categories.service";
+import { listBackofficeCategories, listCatalogCategoryTree } from "@/lib/api/services/categories.service";
 import { listBackofficeProducts, updateBackofficeProduct } from "@/lib/api/services/products.service";
-import type { BackofficeCategory } from "@/lib/category/types";
+import { listCatalogVariants } from "@/lib/api/services/catalog-variants.service";
+import type { BackofficeCategory, CategoryTreeNode } from "@/lib/category/types";
 import type { Brand } from "@/lib/brand/types";
 import type { ProductStatus, ProductSummary } from "@/lib/product/types";
 
@@ -25,6 +26,29 @@ function formatDate(value: string) {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" });
+}
+
+/** Flatten CategoryTreeNode[] (public API) → BackofficeCategory[] (backoffice format). */
+function flattenCategoryTree(nodes: CategoryTreeNode[], parentId: string | null = null): BackofficeCategory[] {
+  const result: BackofficeCategory[] = [];
+  for (const node of nodes) {
+    result.push({
+      id: node.id,
+      parentId,
+      name: node.name,
+      slug: node.slug,
+      description: node.description,
+      active: true,
+      sortOrder: node.sortOrder,
+      createdAt: "",
+      updatedAt: "",
+      parent: null,
+    });
+    if (node.children?.length) {
+      result.push(...flattenCategoryTree(node.children, node.id));
+    }
+  }
+  return result;
 }
 
 /** Return the ID set of a category and all its descendants (from flat list). */
@@ -79,8 +103,62 @@ export default function StaffProductList() {
       setProducts(sortProducts(productsRes));
       setCategories(categoriesRes);
       setErrorMessage(null);
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Không thể tải dữ liệu.");
+    } catch {
+      // Fallback: load from public catalog APIs (no auth required)
+      try {
+        const [variantsRes, treeRes] = await Promise.all([
+          listCatalogVariants({ limit: 500 }),
+          listCatalogCategoryTree(),
+        ]);
+        // Deduplicate variants by product.id → build ProductSummary[]
+        const productMap = new Map<string, ProductSummary>();
+        for (const v of variantsRes) {
+          if (!productMap.has(v.product.id)) {
+            const cat: BackofficeCategory = {
+              id: v.category.id,
+              parentId: null,
+              name: v.category.name,
+              slug: v.category.slug,
+              description: null,
+              active: true,
+              sortOrder: 0,
+              createdAt: "",
+              updatedAt: "",
+              parent: null,
+            };
+            const brand: Brand | null = v.brand
+              ? { id: v.brand.id, name: v.brand.name, slug: v.brand.slug, logoUrl: v.brand.logoUrl, logoPublicId: null, bannerUrl: null, bannerPublicId: null, active: true, createdAt: "", updatedAt: "" }
+              : null;
+            productMap.set(v.product.id, {
+              id: v.product.id,
+              categoryId: v.category.id,
+              brandId: v.brand?.id ?? null,
+              name: v.product.name,
+              slug: v.product.slug,
+              description: v.product.description ?? null,
+              datasheetUrl: v.product.datasheetUrl ?? null,
+              imageUrls: v.effectiveImageUrls ?? [],
+              imagePublicIds: [],
+              status: "PUBLISHED",
+              active: v.active,
+              createdAt: "",
+              updatedAt: "",
+              category: cat,
+              brand,
+              _count: { variants: 1, attributes: 0 },
+            });
+          } else {
+            // increment variant count
+            const existing = productMap.get(v.product.id)!;
+            existing._count.variants += 1;
+          }
+        }
+        setProducts(sortProducts([...productMap.values()]));
+        setCategories(flattenCategoryTree(treeRes));
+        setErrorMessage(null);
+      } catch (fallbackError) {
+        setErrorMessage(fallbackError instanceof Error ? fallbackError.message : "Không thể tải dữ liệu.");
+      }
     } finally {
       setIsLoading(false);
     }
