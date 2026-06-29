@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { FileText } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import ProductDescriptionRenderer from "@/components/storefront/ProductDescriptionRenderer";
 import RelatedVariantCarousel from "@/components/storefront/RelatedVariantCarousel";
@@ -68,9 +68,16 @@ export default function ProductVariantDetailPage({ slug, initialVariant }: { slu
   const [relatedErrorMessage, setRelatedErrorMessage] = useState<string | null>(null);
   const [quoteVariant, setQuoteVariant] = useState<CatalogVariant | null>(null);
 
-  // Holds the SSR-prefetched variant from the initial page load.
-  // Never cleared — both React StrictMode effect invocations see it and skip the fetch.
+  // Holds the latest SSR-prefetched variant. useLayoutEffect keeps it current with the prop
+  // so the useEffect below always sees the newest initialVariant before it runs.
   const ssrVariantRef = useRef<CatalogVariant | undefined>(initialVariant);
+
+  // useLayoutEffect runs synchronously after render but BEFORE useEffect.
+  // This ensures that when slug changes (client-side navigation), ssrVariantRef already
+  // holds the new initialVariant when the effect fires — so it correctly skips the fetch.
+  useLayoutEffect(() => {
+    ssrVariantRef.current = initialVariant;
+  });
 
   const technicalSpecs = useMemo<DisplaySpec[]>(() => {
     if (!variant) {
