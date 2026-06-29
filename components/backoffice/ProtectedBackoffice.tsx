@@ -13,7 +13,8 @@ type ProtectedBackofficeProps = {
   loadingMessage: string;
 };
 
-const DEV_BYPASS = process.env.NODE_ENV === "development";
+// Set NEXT_PUBLIC_DEV_AUTH_BYPASS=true in .env.local only — never in .env or committed files
+const DEV_BYPASS = process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS === "true";
 
 export default function ProtectedBackoffice({
   allowedRoles,

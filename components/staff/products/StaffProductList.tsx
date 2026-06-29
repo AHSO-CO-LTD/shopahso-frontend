@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ImageOff } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import StaffLayout from "@/components/staff/StaffLayout";
 import ProductFilterSidebar from "@/components/staff/products/ProductFilterSidebar";
@@ -19,7 +19,11 @@ import type { ProductStatus, ProductSummary } from "@/lib/product/types";
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function sortProducts(items: ProductSummary[]) {
-  return [...items].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
+  return [...items].sort((a, b) => {
+    const ta = a.createdAt ? +new Date(a.createdAt) : 0;
+    const tb = b.createdAt ? +new Date(b.createdAt) : 0;
+    return tb - ta;
+  });
 }
 
 function formatDate(value: string) {
@@ -51,20 +55,22 @@ function flattenCategoryTree(nodes: CategoryTreeNode[], parentId: string | null 
   return result;
 }
 
-/** Return the ID set of a category and all its descendants (from flat list). */
+/** Return the ID set of a category and all its descendants. O(n) BFS. */
 function collectDescendantIds(categories: BackofficeCategory[], rootId: string): Set<string> {
-  const result = new Set<string>([rootId]);
-  let changed = true;
-  const remaining = categories.filter((c) => c.id !== rootId);
-  while (changed) {
-    changed = false;
-    for (let i = remaining.length - 1; i >= 0; i--) {
-      if (result.has(remaining[i].parentId ?? "")) {
-        result.add(remaining[i].id);
-        remaining.splice(i, 1);
-        changed = true;
-      }
+  const childrenOf = new Map<string, string[]>();
+  for (const cat of categories) {
+    if (cat.parentId) {
+      const arr = childrenOf.get(cat.parentId) ?? [];
+      arr.push(cat.id);
+      childrenOf.set(cat.parentId, arr);
     }
+  }
+  const result = new Set<string>();
+  const queue = [rootId];
+  while (queue.length > 0) {
+    const id = queue.shift()!;
+    result.add(id);
+    for (const childId of childrenOf.get(id) ?? []) queue.push(childId);
   }
   return result;
 }
@@ -75,6 +81,7 @@ export default function StaffProductList() {
   const [products, setProducts] = useState<ProductSummary[]>([]);
   const [categories, setCategories] = useState<BackofficeCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isReadOnlyMode, setIsReadOnlyMode] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Sidebar filters
@@ -91,27 +98,38 @@ export default function StaffProductList() {
   // Optimistic-update trackers
   const [updatingIds, setUpdatingIds] = useState<Set<string>>(new Set());
 
+  // Sequence counter to discard stale concurrent loadData results
+  const loadSeqRef = useRef(0);
+
   // ── Load ────────────────────────────────────────────────────────────────
 
   const loadData = useCallback(async () => {
+    const seq = ++loadSeqRef.current;
     setIsLoading(true);
     try {
       const [productsRes, categoriesRes] = await Promise.all([
         listBackofficeProducts(),
         listBackofficeCategories(),
       ]);
+      if (seq !== loadSeqRef.current) return;
       setProducts(sortProducts(productsRes));
       setCategories(categoriesRes);
+      setIsReadOnlyMode(false);
       setErrorMessage(null);
-    } catch {
+    } catch (primaryError) {
+      // Always surface the error — never fail silently (AGENTS.md)
+      toast.warning(
+        primaryError instanceof Error ? primaryError.message : "Không kết nối được backoffice.",
+        { description: "Đang hiển thị dữ liệu công khai — chỉ xem.", duration: 6000 },
+      );
       // Fallback: load from public catalog APIs (no auth required)
       try {
         const [variantsRes, treeRes] = await Promise.all([
           listCatalogVariants({ limit: 500 }),
           listCatalogCategoryTree(),
         ]);
-        // Deduplicate variants by product.id → build ProductSummary[]
         const productMap = new Map<string, ProductSummary>();
+        const fallbackTime = new Date().toISOString();
         for (const v of variantsRes) {
           if (!productMap.has(v.product.id)) {
             const cat: BackofficeCategory = {
@@ -141,26 +159,27 @@ export default function StaffProductList() {
               imagePublicIds: [],
               status: "PUBLISHED",
               active: v.active,
-              createdAt: "",
-              updatedAt: "",
+              createdAt: fallbackTime,
+              updatedAt: fallbackTime,
               category: cat,
               brand,
               _count: { variants: 1, attributes: 0 },
             });
           } else {
-            // increment variant count
-            const existing = productMap.get(v.product.id)!;
-            existing._count.variants += 1;
+            productMap.get(v.product.id)!._count.variants += 1;
           }
         }
+        if (seq !== loadSeqRef.current) return;
         setProducts(sortProducts([...productMap.values()]));
         setCategories(flattenCategoryTree(treeRes));
+        setIsReadOnlyMode(true);
         setErrorMessage(null);
       } catch (fallbackError) {
+        if (seq !== loadSeqRef.current) return;
         setErrorMessage(fallbackError instanceof Error ? fallbackError.message : "Không thể tải dữ liệu.");
       }
     } finally {
-      setIsLoading(false);
+      if (seq === loadSeqRef.current) setIsLoading(false);
     }
   }, []);
 
@@ -265,7 +284,7 @@ export default function StaffProductList() {
       await Promise.all(ids.map((id) => updateBackofficeProduct(id, payload)));
       toast.success("Đã cập nhật.", { id: loadingId });
     } catch (error) {
-      // Revert
+      // Revert — increment seq so concurrent in-flight loadData calls are discarded
       void loadData();
       toast.error(error instanceof Error ? error.message : "Không thể cập nhật.", { id: loadingId });
     } finally {
@@ -287,13 +306,16 @@ export default function StaffProductList() {
   };
 
   const handleBulkActive = (active: boolean) => {
-    const ids = [...selectedIds];
+    // Exclude products already being updated to prevent concurrent races
+    const ids = [...selectedIds].filter((id) => !updatingIds.has(id));
+    if (ids.length === 0) return;
     void applyUpdate(ids, { active }, `Đang ${active ? "bật" : "tắt"} ${ids.length} sản phẩm...`);
     setSelectedIds(new Set());
   };
 
   const handleBulkStatus = (status: ProductStatus) => {
-    const ids = [...selectedIds];
+    const ids = [...selectedIds].filter((id) => !updatingIds.has(id));
+    if (ids.length === 0) return;
     void applyUpdate(ids, { status }, `Đang chuyển ${ids.length} sản phẩm sang ${status}...`);
     setSelectedIds(new Set());
   };
@@ -341,8 +363,23 @@ export default function StaffProductList() {
             onStatusChange={setStatusFilter}
           />
 
+          {/* Read-only mode banner */}
+          {isReadOnlyMode && (
+            <div className="flex items-center gap-2 border-b border-border bg-amber-50 px-6 py-2 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+              <span className="font-semibold">Chế độ chỉ xem</span>
+              <span className="text-amber-700 dark:text-amber-400">— Dữ liệu từ catalog công khai. Đăng nhập để chỉnh sửa.</span>
+              <button
+                type="button"
+                className="ml-auto cursor-pointer text-amber-700 underline hover:text-amber-900 dark:text-amber-400"
+                onClick={() => void loadData()}
+              >
+                Thử lại
+              </button>
+            </div>
+          )}
+
           {/* Bulk action bar */}
-          {selectedIds.size > 0 && (
+          {!isReadOnlyMode && selectedIds.size > 0 && (
             <div className="flex items-center gap-2 border-b border-border bg-muted/20 px-6 py-2">
               <span className="text-xs font-semibold text-foreground">
                 {selectedIds.size} đã chọn
@@ -427,6 +464,7 @@ export default function StaffProductList() {
                       const imageUrl = product.imageUrls[0];
                       const isUpdating = updatingIds.has(product.id);
                       const isChecked = selectedIds.has(product.id);
+                      const canEdit = !isReadOnlyMode;
 
                       return (
                         <li
@@ -483,15 +521,16 @@ export default function StaffProductList() {
                           {/* Active toggle */}
                           <button
                             type="button"
-                            disabled={isUpdating}
+                            disabled={isUpdating || !canEdit}
                             aria-label={product.active ? "Đang bật — nhấn để tắt" : "Đang tắt — nhấn để bật"}
                             className={[
-                              "h-7 w-16 cursor-pointer border text-[11px] font-semibold transition-colors disabled:cursor-wait disabled:opacity-50",
+                              "h-7 w-16 border text-[11px] font-semibold transition-colors disabled:opacity-50",
+                              canEdit ? "cursor-pointer disabled:cursor-wait" : "cursor-not-allowed",
                               product.active
                                 ? "border-primary bg-primary text-primary-foreground hover:bg-primary/80"
                                 : "border-border bg-background text-muted-foreground hover:border-primary hover:text-primary",
                             ].join(" ")}
-                            onClick={() => handleToggleActive(product)}
+                            onClick={() => canEdit && handleToggleActive(product)}
                           >
                             {product.active ? "ON" : "OFF"}
                           </button>
@@ -499,8 +538,8 @@ export default function StaffProductList() {
                           {/* Status */}
                           <select
                             aria-label={`Trạng thái của ${product.name}`}
-                            className="h-9 w-full cursor-pointer border border-border bg-background px-2 text-xs font-semibold outline-none transition-colors hover:border-primary focus:border-primary disabled:cursor-wait disabled:opacity-60"
-                            disabled={isUpdating}
+                            className="h-9 w-full border border-border bg-background px-2 text-xs font-semibold outline-none transition-colors hover:border-primary focus:border-primary disabled:cursor-not-allowed disabled:opacity-60"
+                            disabled={isUpdating || !canEdit}
                             value={product.status}
                             onChange={(e) => handleStatusChange(product, e.target.value as ProductStatus)}
                           >

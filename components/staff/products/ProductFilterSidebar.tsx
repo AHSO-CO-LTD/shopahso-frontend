@@ -66,7 +66,9 @@ function CategoryTreeItem({
     return hasSelected(node.children);
   }, [node.children, selectedCategoryId]);
 
-  const [expanded, setExpanded] = useState(isSelected || childIsSelected);
+  // manualExpanded tracks explicit user toggle; force-expand whenever this node or a descendant is selected
+  const [manualExpanded, setManualExpanded] = useState(false);
+  const expanded = manualExpanded || isSelected || childIsSelected;
 
   return (
     <li>
@@ -79,7 +81,7 @@ function CategoryTreeItem({
             type="button"
             aria-label={expanded ? "Thu gọn" : "Mở rộng"}
             className="flex size-5 shrink-0 cursor-pointer items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
-            onClick={() => setExpanded((v) => !v)}
+            onClick={() => setManualExpanded((v) => !v)}
           >
             {expanded ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
           </button>
