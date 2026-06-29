@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { FileText } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import ProductDescriptionRenderer from "@/components/storefront/ProductDescriptionRenderer";
 import RelatedVariantCarousel from "@/components/storefront/RelatedVariantCarousel";
@@ -58,14 +58,19 @@ function formatMoney(value: string | number | null | undefined) {
   }) + " đ";
 }
 
-export default function ProductVariantDetailPage({ slug }: { slug: string }) {
-  const [variant, setVariant] = useState<CatalogVariant | null>(null);
+export default function ProductVariantDetailPage({ slug, initialVariant }: { slug: string; initialVariant?: CatalogVariant }) {
+  // Use SSR-prefetched data as initial state to avoid a duplicate API call on mount
+  const [variant, setVariant] = useState<CatalogVariant | null>(initialVariant ?? null);
   const [relatedVariants, setRelatedVariants] = useState<CatalogVariant[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isRelatedLoading, setIsRelatedLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [relatedErrorMessage, setRelatedErrorMessage] = useState<string | null>(null);
   const [quoteVariant, setQuoteVariant] = useState<CatalogVariant | null>(null);
+
+  // Ref holds the SSR variant so the effect can read it without being in the dep array.
+  // Cleared after first use so subsequent slug-changes re-fetch normally.
+  const ssrVariantRef = useRef<CatalogVariant | undefined>(initialVariant);
 
   const technicalSpecs = useMemo<DisplaySpec[]>(() => {
     if (!variant) {
@@ -157,32 +162,47 @@ export default function ProductVariantDetailPage({ slug }: { slug: string }) {
   const productDescription = (variant?.product.description ?? "").trim();
 
   useEffect(() => {
-    async function loadVariant() {
-      setIsLoading(true);
-      setIsRelatedLoading(false);
-      setErrorMessage(null);
-      setRelatedErrorMessage(null);
+    async function loadRelated(productSlug: string) {
       setRelatedVariants([]);
+      setRelatedErrorMessage(null);
+      setIsRelatedLoading(true);
+      try {
+        const productDetail = await getCatalogProductBySlug(productSlug);
+        setRelatedVariants(productDetail.variants ?? []);
+      } catch (productError) {
+        const message =
+          productError instanceof Error
+            ? productError.message
+            : "Không thể tải danh sách sản phẩm cùng dòng.";
+        setRelatedErrorMessage(message);
+        toast.error(message);
+      } finally {
+        setIsRelatedLoading(false);
+      }
+    }
+
+    async function loadVariant() {
+      // If SSR already fetched this variant, skip the client-side fetch to avoid double-counting views
+      const ssrVariant = ssrVariantRef.current;
+      ssrVariantRef.current = undefined; // clear — future slug changes must re-fetch
+      if (ssrVariant?.slug === slug) {
+        if (ssrVariant.product.slug) await loadRelated(ssrVariant.product.slug);
+        return;
+      }
+
+      setIsLoading(true);
+      setErrorMessage(null);
+      setVariant(null);
+      setRelatedVariants([]);
+      setRelatedErrorMessage(null);
+      setIsRelatedLoading(false);
 
       try {
         const response = await getCatalogVariantBySlug(slug);
         setVariant(response);
 
         if (response.product.slug) {
-          setIsRelatedLoading(true);
-          try {
-            const productDetail = await getCatalogProductBySlug(response.product.slug);
-            setRelatedVariants(productDetail.variants ?? []);
-          } catch (productError) {
-            const message =
-              productError instanceof Error
-                ? productError.message
-                : "Không thể tải danh sách sản phẩm cùng dòng.";
-            setRelatedErrorMessage(message);
-            toast.error(message);
-          } finally {
-            setIsRelatedLoading(false);
-          }
+          await loadRelated(response.product.slug);
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : "Không thể tải chi tiết sản phẩm.";
