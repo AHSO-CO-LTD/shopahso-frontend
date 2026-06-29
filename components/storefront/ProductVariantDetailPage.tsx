@@ -68,8 +68,8 @@ export default function ProductVariantDetailPage({ slug, initialVariant }: { slu
   const [relatedErrorMessage, setRelatedErrorMessage] = useState<string | null>(null);
   const [quoteVariant, setQuoteVariant] = useState<CatalogVariant | null>(null);
 
-  // Ref holds the SSR variant so the effect can read it without being in the dep array.
-  // Cleared after first use so subsequent slug-changes re-fetch normally.
+  // Holds the SSR-prefetched variant from the initial page load.
+  // Never cleared — both React StrictMode effect invocations see it and skip the fetch.
   const ssrVariantRef = useRef<CatalogVariant | undefined>(initialVariant);
 
   const technicalSpecs = useMemo<DisplaySpec[]>(() => {
@@ -182,10 +182,11 @@ export default function ProductVariantDetailPage({ slug, initialVariant }: { slu
     }
 
     async function loadVariant() {
-      // If SSR already fetched this variant, skip the client-side fetch to avoid double-counting views
+      // Skip fetch when SSR already has data for this slug — avoids double view-count increment.
+      // ssrVariantRef is never cleared so both React StrictMode effect invocations see it.
       const ssrVariant = ssrVariantRef.current;
-      ssrVariantRef.current = undefined; // clear — future slug changes must re-fetch
       if (ssrVariant?.slug === slug) {
+        setVariant(ssrVariant); // keep state in sync (covers navigate-back case)
         if (ssrVariant.product.slug) await loadRelated(ssrVariant.product.slug);
         return;
       }
