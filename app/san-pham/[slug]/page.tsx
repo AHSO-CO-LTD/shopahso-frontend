@@ -66,7 +66,7 @@ export default async function ProductVariantDetailRoute({ params }: ProductVaria
     <>
       <JsonLd id="shopahso-product-jsonld" data={buildProductJsonLd(variant)} />
       <JsonLd id="shopahso-product-breadcrumb-jsonld" data={buildProductBreadcrumbJsonLd(variant)} />
-      <ProductVariantDetailPage slug={variant.slug} />
+      <ProductVariantDetailPage initialVariant={variant} slug={variant.slug} />
     </>
   );
 }
